@@ -1,8 +1,15 @@
 'use client';
 
-import { BarChart3, Home, LogOut, Settings, Users } from 'lucide-react';
+import { BarChart3, Home, LogOut, Settings, Users, X } from 'lucide-react';
 
-export const Sidebar = ({ activeTab, onTabChange, userRole, onRoleChange }) => {
+export const Sidebar = ({
+  activeTab,
+  onTabChange,
+  userRole,
+  onRoleChange,
+  isOpen = true,
+  onClose,
+}) => {
   const tabs = [
     {
       id: 'dashboard',
@@ -24,12 +31,45 @@ export const Sidebar = ({ activeTab, onTabChange, userRole, onRoleChange }) => {
     });
   }
 
+  const handleTabClick = (tabId) => {
+    onTabChange(tabId);
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col h-screen">
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          aria-label="Close menu overlay"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <div
+        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] bg-gray-900 text-white flex flex-col h-screen transform transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:max-w-none lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
       {/* Logo */}
-      <div className="p-6 border-b border-gray-800">
-        <h1 className="text-xl font-bold">Adovcrm</h1>
-        <p className="text-xs text-gray-400 mt-1">Transaction Manager</p>
+      <div className="p-4 lg:p-6 border-b border-gray-800">
+        <div className="flex items-center justify-between lg:block">
+          <div>
+            <h1 className="text-lg lg:text-xl font-bold">Adovcrm</h1>
+            <p className="text-xs text-gray-400 mt-1">Transaction Manager</p>
+          </div>
+          <button
+            type="button"
+            className="lg:hidden p-2 rounded-md text-gray-300 hover:bg-gray-800"
+            onClick={onClose}
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* User Role */}
@@ -62,7 +102,7 @@ export const Sidebar = ({ activeTab, onTabChange, userRole, onRoleChange }) => {
             return (
               <button
                 key={tab.id}
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white'
@@ -88,6 +128,7 @@ export const Sidebar = ({ activeTab, onTabChange, userRole, onRoleChange }) => {
           Logout
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

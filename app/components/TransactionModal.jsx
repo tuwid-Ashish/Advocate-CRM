@@ -9,7 +9,7 @@ export const TransactionModal = ({ transaction, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Transaction Details</h2>
           <button
             onClick={onClose}
@@ -19,7 +19,7 @@ export const TransactionModal = ({ transaction, onClose }) => {
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-600 font-medium">Transaction ID</p>
@@ -93,7 +93,7 @@ export const TransactionModal = ({ transaction, onClose }) => {
           )}
         </div>
 
-        <div className="flex gap-3 p-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row gap-3 p-4 sm:p-6 border-t border-gray-200">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-medium hover:bg-gray-200 transition-colors"

@@ -32,7 +32,7 @@ export const PaymentModeChart = ({ data }) => {
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, value }) => `${name}: ${value}`}
+            label={({ value }) => value}
             outerRadius={80}
             fill="#8884d8"
             dataKey="value"
@@ -60,7 +60,7 @@ export const EmployeeRevenueChart = ({ data }) => {
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
           <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
@@ -109,7 +109,7 @@ export const ServiceCountChart = ({ data }) => {
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={80} />
+          <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-32} textAnchor="end" height={65} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip />
           <Bar dataKey="count" fill="#8b5cf6" radius={[8, 8, 0, 0]} />

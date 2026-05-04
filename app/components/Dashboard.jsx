@@ -20,12 +20,13 @@ import {
   getEmployeeStats,
   getServiceStats,
 } from '@/lib/utils';
-import { Plus, TrendingUp, Zap, DollarSign } from 'lucide-react';
+import { Plus, TrendingUp, Zap, DollarSign, Menu } from 'lucide-react';
 
 export const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [userRole, setUserRole] = useState('admin');
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [transactions] = useState(initialTransactions);
 
   const [filters, setFilters] = useState({
@@ -94,35 +95,52 @@ export const Dashboard = () => {
   const services = [...new Set(transactions.map((t) => t.service))];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} userRole={userRole} onRoleChange={setUserRole} />
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userRole={userRole}
+        onRoleChange={setUserRole}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-8 py-4 shadow-sm">
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                className="lg:hidden mt-1 p-2 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {activeTab === 'dashboard' && 'Dashboard'}
                 {activeTab === 'transactions' && 'Transactions'}
                 {activeTab === 'employees' && 'Employees'}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {activeTab === 'dashboard' && 'Monitor your business metrics'}
-                {activeTab === 'transactions' && `View and manage all transactions (${filteredTransactions.length} results)`}
-                {activeTab === 'employees' && 'Track employee performance'}
-              </p>
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  {activeTab === 'dashboard' && 'Monitor your business metrics'}
+                  {activeTab === 'transactions' && `View and manage all transactions (${filteredTransactions.length} results)`}
+                  {activeTab === 'employees' && 'Track employee performance'}
+                </p>
+              </div>
             </div>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Add Transaction
+            <button className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm sm:text-base">
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Add Transaction</span>
             </button>
           </div>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-8">
+          <div className="p-4 sm:p-6 lg:p-8">
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
                 {/* Dashboard Date Filter */}
