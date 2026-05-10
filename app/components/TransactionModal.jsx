@@ -1,116 +1,119 @@
 'use client';
 
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
-import { X } from 'lucide-react';
+import { X, User, Briefcase, CreditCard, Clock, FileText } from 'lucide-react';
+import { ServiceBadge } from './ServiceBadge';
 
-export const TransactionModal = ({ transaction, onClose }) => {
+export const TransactionModal = ({ transaction, onClose, onEdit }) => {
   if (!transaction) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full shadow-xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Transaction Details</h2>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] border border-gray-200 dark:border-gray-800 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">Record Overview</h2>
+            <p className="text-[10px] text-gray-500 font-mono mt-0.5 uppercase tracking-tighter">ID: {transaction.id}</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Transaction ID</p>
-              <p className="text-sm font-semibold text-gray-900 mt-1">{transaction.id}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Date</p>
-              <p className="text-sm font-semibold text-gray-900 mt-1">{formatDate(transaction.date)}</p>
-            </div>
+        {/* Content */}
+        <div className="p-5 space-y-6 overflow-y-auto flex-1">
+          {/* Status & Date Row */}
+          <div className="flex items-center justify-between">
+             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(transaction.status)}`}>
+                {transaction.status}
+              </span>
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium">{formatDate(transaction.date)}</span>
+              </div>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-xs text-gray-600 font-medium mb-2">Customer Information</p>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-900">
-                <span className="font-medium">Name:</span> {transaction.customerName}
+          {/* Core Info Grid */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <User className="w-3 h-3" /> Customer
               </p>
-              <p className="text-sm text-gray-900">
-                <span className="font-medium">Phone:</span> {transaction.phone}
+              <p className="text-sm font-bold text-gray-900 dark:text-white">{transaction.customerName}</p>
+              <p className="text-xs text-gray-500 tabular-nums">{transaction.phone}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Briefcase className="w-3 h-3" /> Service
               </p>
+              <div>
+                <ServiceBadge type={transaction.service} />
+              </div>
+              <p className="text-[10px] text-gray-500 font-medium mt-1 uppercase tracking-tight">By: {transaction.employee}</p>
             </div>
           </div>
 
-          <div>
-            <p className="text-xs text-gray-600 font-medium">Service</p>
-            <p className="text-sm font-semibold text-gray-900 mt-1">{transaction.service}</p>
-          </div>
-
+          {/* Details Block */}
           {transaction.serviceDetail && (
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Service Details</p>
-              <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded p-2">
-                {transaction.serviceDetail}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <FileText className="w-3 h-3" /> Service Details
               </p>
+              <div className="bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-lg p-3 text-xs text-slate-700 dark:text-gray-300 leading-relaxed font-medium">
+                {transaction.serviceDetail}
+              </div>
             </div>
           )}
 
-          <div>
-            <p className="text-xs text-gray-600 font-medium">Handled by</p>
-            <p className="text-sm font-semibold text-gray-900 mt-1">{transaction.employee}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 bg-blue-50 rounded-lg p-4">
-            <div>
-              <p className="text-xs text-blue-700 font-medium">Amount Received</p>
-              <p className="text-sm font-bold text-blue-900 mt-1">
-                {formatCurrency(transaction.amountReceived)}
-              </p>
+          {/* Financials Box */}
+          <div className="bg-blue-600 rounded-xl p-5 text-white shadow-lg shadow-blue-200">
+            <div className="flex items-center justify-between opacity-80 mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest">Total Amount</p>
+              <CreditCard className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs text-blue-700 font-medium">Amount Paid</p>
-              <p className="text-sm font-bold text-blue-900 mt-1">
-                {formatCurrency(transaction.amountPaid)}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Payment Mode</p>
-              <p className="text-sm font-semibold text-gray-900 mt-1">{transaction.paymentMode}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Status</p>
-              <span
-                className={`inline-block px-2 py-1 rounded text-xs font-medium border mt-1 ${getStatusColor(
-                  transaction.status
-                )}`}
-              >
-                {transaction.status}
-              </span>
+            <p className="text-3xl font-bold tracking-tight tabular-nums">
+              {formatCurrency(transaction.amountReceived)}
+            </p>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/20">
+              <div>
+                <p className="text-[10px] font-bold opacity-70 uppercase">Payment Mode</p>
+                <p className="text-xs font-bold mt-1">{transaction.paymentMode}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold opacity-70 uppercase">Filing Status</p>
+                <p className="text-xs font-bold mt-1">Confirmed</p>
+              </div>
             </div>
           </div>
 
+          {/* Notes */}
           {transaction.notes && (
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Notes</p>
-              <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded p-2">{transaction.notes}</p>
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Internal Notes</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-lg p-3 italic">
+                "{transaction.notes}"
+              </p>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 p-4 sm:p-6 border-t border-gray-200">
+        {/* Footer Actions */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+            className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors uppercase tracking-wider"
           >
-            Close
+            Dismiss
           </button>
-          <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
-            Edit
+          <button 
+            onClick={() => { onClose(); onEdit(transaction); }}
+            className="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-200 dark:shadow-none uppercase tracking-wider"
+          >
+            Edit Record
           </button>
         </div>
       </div>

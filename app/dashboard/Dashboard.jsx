@@ -1,12 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useHotkeys } from '@/app/hooks/useHotkeys';
 import { MetricCard } from '@/app/components/MetricCard';
 import { TransactionTable } from '@/app/components/TransactionTable';
 import { TransactionModal } from '@/app/components/TransactionModal';
 import { AddRecordModal } from '@/app/components/AddRecordModal';
+import { EditRecordModal } from '@/app/components/EditRecordModal';
 import { AddClientModal } from '@/app/components/AddClientModal';
+import { FilterBar } from '@/app/components/FilterBar';
 import {
   PaymentModeChart,
   EmployeeRevenueChart,
@@ -18,13 +21,15 @@ import { Sidebar } from '@/app/components/Sidebar';
 import { formatCurrency } from '@/lib/utils';
 import {
   Plus,
-  TrendingUp,
-  Zap,
-  DollarSign,
+  ClipboardCheck,
+  CheckCircle,
+  AlertTriangle,
+  CreditCard,
   Menu,
-  Users,
-  FileText,
-  PieChart,
+  Moon,
+  Sun,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 const SERVICE_LABELS = {
@@ -61,7 +66,8 @@ function buildServiceDetail(record) {
   }
 
   if (record.oneTimeDetail) {
-    return `Email: ${record.oneTimeDetail.email || 'Not set'}`;
+    const { email, phone } = record.oneTimeDetail;
+    return `Email: ${email || 'Not set'} | Phone: ${phone || 'Not set'}`;
   }
 
   if (record.gstFilings?.length) {
@@ -80,7 +86,7 @@ function buildServiceDetail(record) {
   }
 
   if (details.kind === 'ONE_TIME') {
-    return `Email: ${details.email || 'Not set'}`;
+    return `Email: ${details.email || 'Not set'} | Phone: ${details.phone || 'Not set'}`;
   }
 
   return record.notes || '';
@@ -128,44 +134,61 @@ export const Dashboard = () => {
   const [userName, setUserName] = useState('');
   const [token, setToken] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [theme, setTheme] = useState('light');
   const [isBooting, setIsBooting] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [records, setRecords] = useState([]);
   const [clients, setClients] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [employees, setEmployees] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isAddRecordModalOpen, setIsAddRecordModalOpen] = useState(false);
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
+  const [isEditRecordModalOpen, setIsEditRecordModalOpen] = useState(false);
+  const [recordToEdit, setRecordToEdit] = useState(null);
 
+  // Refs for hotkey targets
+  const searchInputRef = useRef(null);
+
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeQuickFilter, setActiveQuickFilter] = useState(null);
   const [filters, setFilters] = useState({
     serviceType: '',
     status: '',
     startDate: '',
     endDate: '',
+    employeeId: '',
   });
 
+  // Boot: load user from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const savedToken = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const tokenStr = localStorage.getItem('token');
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedSidebar = localStorage.getItem('sidebarCollapsed') === 'true';
 
-    if (!savedUser || !savedToken) {
-      router.replace('/login');
+    setTheme(savedTheme);
+    setIsSidebarCollapsed(savedSidebar);
+    if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+
+    if (!userStr || !tokenStr) {
+      router.push('/login');
       return;
     }
 
     try {
-      const parsedUser = JSON.parse(savedUser);
-      setUserName(parsedUser.name || 'User');
-      setUserRole((parsedUser.role || 'employee').toLowerCase());
-      setToken(savedToken);
+      const user = JSON.parse(userStr);
+      setUserRole(user.role?.toLowerCase() || '');
+      setUserName(user.name || 'User');
+      setToken(tokenStr);
+    } catch (e) {
+      console.error('Failed to parse user from localStorage', e);
+      router.push('/login');
+    } finally {
       setIsBooting(false);
-    } catch (parseError) {
-      console.error('Failed to parse saved user session:', parseError);
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      router.replace('/login');
     }
   }, [router]);
 
@@ -180,44 +203,45 @@ export const Dashboard = () => {
       recordParams.set('skip', '0');
       recordParams.set('take', '500');
 
-      const recordResponse = await fetch(`/api/records?${recordParams.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const requests = [
+        fetch(`/api/records?${recordParams.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/clients', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ];
 
-      if (!recordResponse.ok) {
-        throw new Error('Failed to fetch service records');
+      // If user is admin, fetch employees for filtering
+      let fetchEmployees = false;
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.role?.toLowerCase() === 'admin') {
+          fetchEmployees = true;
+          requests.push(
+            fetch('/api/employees', {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          );
+        }
       }
 
-      const recordData = await recordResponse.json();
+      const responses = await Promise.all(requests);
+
+      if (!responses[0].ok) throw new Error('Failed to fetch service records');
+      if (!responses[1].ok) throw new Error('Failed to fetch clients');
+
+      const recordData = await responses[0].json();
+      const clientsData = await responses[1].json();
+
       setRecords(recordData.records || []);
-
-      const statsResponse = await fetch('/api/dashboard/stats', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!statsResponse.ok) {
-        throw new Error('Failed to fetch dashboard statistics');
-      }
-
-      const statsData = await statsResponse.json();
-      setStats(statsData);
-
-      const clientsResponse = await fetch('/api/clients', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!clientsResponse.ok) {
-        throw new Error('Failed to fetch clients');
-      }
-
-      const clientsData = await clientsResponse.json();
       setClients(clientsData.clients || []);
+
+      if (fetchEmployees && responses[2] && responses[2].ok) {
+        const employeesData = await responses[2].json();
+        setEmployees(employeesData.employees || []);
+      }
     } catch (requestError) {
       console.error(requestError);
       setError(requestError.message || 'Failed to load dashboard data');
@@ -231,106 +255,175 @@ export const Dashboard = () => {
     fetchDashboardData();
   }, [token, isBooting, fetchDashboardData]);
 
-  const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
-      if (filters.serviceType && record.serviceType !== filters.serviceType) return false;
-      if (filters.status && record.status !== filters.status) return false;
+  // All transactions (unfiltered) — used for dashboard KPIs & charts
+  const allTransactions = useMemo(() => records.map(mapRecordToTransaction), [records]);
 
-      const createdAt = new Date(record.createdAt);
-
-      if (filters.startDate) {
-        const startDate = new Date(`${filters.startDate}T00:00:00`);
-        if (createdAt < startDate) return false;
+  // Filtered transactions — used in the Service Records tab
+  const transactions = useMemo(() => {
+    return allTransactions.filter((txn) => {
+      // 1. Global search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const match =
+          txn.customerName.toLowerCase().includes(q) ||
+          txn.phone.toLowerCase().includes(q) ||
+          txn.service.toLowerCase().includes(q) ||
+          txn.notes.toLowerCase().includes(q);
+        if (!match) return false;
       }
 
+      // 2. Quick filter chips
+      if (activeQuickFilter) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        switch (activeQuickFilter) {
+          case 'today':
+            if (new Date(txn.date) < todayStart) return false;
+            break;
+          case 'pending':
+            if (txn.status !== 'Pending') return false;
+            break;
+          case 'this_week':
+            if (new Date(txn.date) < weekAgo) return false;
+            break;
+          case 'gst':
+            if (!txn.service.toUpperCase().includes('GST')) return false;
+            break;
+          case 'pan':
+            if (!txn.service.toUpperCase().includes('PAN')) return false;
+            break;
+          case 'high_value':
+            if (txn.amountReceived < 10000) return false;
+            break;
+        }
+      }
+
+      // 3. Advanced filters
+      if (filters.serviceType && txn.record.serviceType !== filters.serviceType) return false;
+      if (filters.status && txn.record.status !== filters.status) return false;
+      if (filters.employeeId && txn.record.createdById !== filters.employeeId) return false;
+
+      const createdAt = new Date(txn.date);
+      if (filters.startDate) {
+        const sDate = new Date(`${filters.startDate}T00:00:00`);
+        if (createdAt < sDate) return false;
+      }
       if (filters.endDate) {
-        const endDate = new Date(`${filters.endDate}T23:59:59`);
-        if (createdAt > endDate) return false;
+        const eDate = new Date(`${filters.endDate}T23:59:59`);
+        if (createdAt > eDate) return false;
       }
 
       return true;
     });
-  }, [filters, records]);
+  }, [allTransactions, searchQuery, activeQuickFilter, filters]);
 
-  const allTransactions = useMemo(() => records.map(mapRecordToTransaction), [records]);
-  const transactions = useMemo(() => filteredRecords.map(mapRecordToTransaction), [filteredRecords]);
+  // Dashboard KPI metrics
+  const todayFilings = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return allTransactions.filter((t) => new Date(t.date) >= todayStart).length;
+  }, [allTransactions]);
 
-  const dashboardTransactions = useMemo(() => transactions.slice(0, 10), [transactions]);
+  const pendingPaymentsValue = useMemo(() => {
+    return allTransactions
+      .filter((t) => t.status === 'Pending')
+      .reduce((sum, t) => sum + t.amountReceived, 0);
+  }, [allTransactions]);
 
+  const completedThisWeek = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return allTransactions.filter(
+      (t) => t.status === 'Completed' && new Date(t.date) >= weekAgo
+    ).length;
+  }, [allTransactions]);
+
+  const overdueTasks = useMemo(() => {
+    return allTransactions.filter((t) => {
+      if (t.status === 'Completed' || t.status === 'Archived') return false;
+      const dueDate = t.record.gstFilings?.[0]?.dueDate;
+      if (dueDate) return new Date(dueDate) < new Date();
+      return Date.now() - new Date(t.record.createdAt).getTime() > 5 * 24 * 60 * 60 * 1000;
+    }).length;
+  }, [allTransactions]);
+
+  // Chart data
   const paymentModeBreakdown = useMemo(() => {
-    const counts = buildCounts(transactions, 'paymentMode');
-    return {
-      cash: counts.Cash || 0,
-      upi: counts.UPI || 0,
-      bank: counts.Credit || 0,
-    };
-  }, [transactions]);
+    const counts = buildCounts(allTransactions, 'paymentMode');
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [allTransactions]);
 
   const statusBreakdown = useMemo(() => {
-    const counts = buildCounts(transactions, 'status');
-    return {
-      completed: counts.Completed || 0,
-      pending: counts.Pending || 0,
-      processing: counts.Processing || 0,
-    };
-  }, [transactions]);
-
-  const employeeStats = useMemo(() => {
-    const statsMap = {};
-
-    transactions.forEach((transaction) => {
-      if (!statsMap[transaction.employee]) {
-        statsMap[transaction.employee] = {
-          name: transaction.employee,
-          revenue: 0,
-          count: 0,
-        };
-      }
-
-      statsMap[transaction.employee].revenue += transaction.amountReceived;
-      statsMap[transaction.employee].count += 1;
-    });
-
-    return Object.values(statsMap).sort((left, right) => right.revenue - left.revenue);
-  }, [transactions]);
+    const counts = buildCounts(allTransactions, 'status');
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [allTransactions]);
 
   const serviceStats = useMemo(() => {
-    const statsMap = {};
+    const counts = buildCounts(allTransactions, 'service');
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [allTransactions]);
 
-    transactions.forEach((transaction) => {
-      if (!statsMap[transaction.service]) {
-        statsMap[transaction.service] = {
-          name: transaction.service,
-          revenue: 0,
-          count: 0,
-        };
+  const employeeStats = useMemo(() => {
+    const map = allTransactions.reduce((acc, txn) => {
+      const emp = txn.employee;
+      if (!acc[emp]) acc[emp] = { name: emp, revenue: 0, count: 0 };
+      acc[emp].revenue += txn.amountReceived;
+      acc[emp].count += 1;
+      return acc;
+    }, {});
+    return Object.values(map);
+  }, [allTransactions]);
+
+  const dashboardTransactions = useMemo(() => allTransactions.slice(0, 10), [allTransactions]);
+
+  // Keyboard shortcuts
+  useHotkeys({
+    '/': () => {
+      setActiveTab('records');
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    },
+    'n': () => {
+      if (activeTab === 'records') setIsAddRecordModalOpen(true);
+    },
+    'N': () => {
+      if (activeTab === 'records') setIsAddRecordModalOpen(true);
+    },
+    'Escape': () => {
+      setSelectedRecord(null);
+      setIsAddRecordModalOpen(false);
+      setIsAddClientModalOpen(false);
+      setIsEditRecordModalOpen(false);
+    },
+    'b': (e) => {
+      if (e.ctrlKey) {
+        const newState = !isSidebarCollapsed;
+        setIsSidebarCollapsed(newState);
+        localStorage.setItem('sidebarCollapsed', newState);
       }
+    }
+  });
 
-      statsMap[transaction.service].revenue += transaction.amountReceived;
-      statsMap[transaction.service].count += 1;
-    });
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
-    return Object.values(statsMap).sort((left, right) => right.count - left.count);
-  }, [transactions]);
-
-  const metrics = stats?.metrics || {};
-  const totalRecords = metrics.totalRecords ?? allTransactions.length;
-  const totalRevenue = metrics.totalRevenue ?? allTransactions.reduce((sum, item) => sum + item.amountReceived, 0);
-  const completedRecords = metrics.completedRecords ?? allTransactions.filter((item) => item.status === 'Completed').length;
-  const pendingRecords = metrics.pendingRecords ?? allTransactions.filter((item) => item.status === 'Pending').length;
-  const inProgressRecords = metrics.inProgressRecords ?? allTransactions.filter((item) => item.status === 'Processing').length;
+  const handleEdit = (txn) => {
+    setRecordToEdit(txn);
+    setIsEditRecordModalOpen(true);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     router.push('/login');
-  };
-
-  const handleDateChange = (field, value) => {
-    setFilters((current) => ({
-      ...current,
-      [field]: value,
-    }));
   };
 
   if (isBooting) {
@@ -342,7 +435,7 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gray-950 text-gray-100' : 'bg-gray-50'}`}>
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -350,56 +443,85 @@ export const Dashboard = () => {
         userName={userName}
         onLogout={handleLogout}
         isOpen={isMobileSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => {
+          const newState = !isSidebarCollapsed;
+          setIsSidebarCollapsed(newState);
+          localStorage.setItem('sidebarCollapsed', newState);
+        }}
         onClose={() => setIsMobileSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4 shadow-sm">
+        {/* Top header bar */}
+        <div className={`border-b px-4 sm:px-6 lg:px-8 py-4 shadow-sm shrink-0 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-start gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
-                className="lg:hidden mt-1 p-2 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100"
+                className="lg:hidden p-2 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                 onClick={() => setIsMobileSidebarOpen(true)}
                 aria-label="Open menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
+              
+              <button
+                type="button"
+                className="hidden lg:flex p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+                onClick={() => {
+                  const newState = !isSidebarCollapsed;
+                  setIsSidebarCollapsed(newState);
+                  localStorage.setItem('sidebarCollapsed', newState);
+                }}
+                title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+              </button>
+
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                <h1 className="text-xl sm:text-2xl font-bold truncate">
                   {activeTab === 'dashboard' && 'Dashboard'}
                   {activeTab === 'records' && 'Service Records'}
                   {activeTab === 'clients' && 'Clients'}
                   {activeTab === 'employees' && 'Employees'}
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">
-                  {activeTab === 'dashboard' && `Welcome, ${userName}`}
-                  {activeTab === 'records' && `Track and manage service records (${transactions.length} shown)`}
-                  {activeTab === 'clients' && `Client directory (${clients.length})`}
-                  {activeTab === 'employees' && 'Monitor employee performance'}
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate dark:text-gray-400">
+                  {activeTab === 'dashboard' && `Welcome back, ${userName}`}
+                  {activeTab === 'records' && `${transactions.length} records shown`}
+                  {activeTab === 'clients' && `${clients.length} clients`}
+                  {activeTab === 'employees' && 'Employee performance overview'}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                aria-label="Toggle theme"
+              >
+                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              </button>
+
               {activeTab === 'records' && (
                 <button
                   type="button"
                   onClick={() => setIsAddRecordModalOpen(true)}
-                  className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm sm:text-base"
+                  className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
                 >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Add Record</span>
                 </button>
               )}
-
               {activeTab === 'clients' && userRole === 'admin' && (
                 <button
                   type="button"
                   onClick={() => setIsAddClientModalOpen(true)}
-                  className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm sm:text-base"
+                  className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
                 >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Add Client</span>
                 </button>
               )}
@@ -407,46 +529,66 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {/* Sticky FilterBar — only on records tab */}
+        {activeTab === 'records' && (
+          <FilterBar
+            filters={filters}
+            onFilterChange={setFilters}
+            onQuickFilter={setActiveQuickFilter}
+            activeQuickFilter={activeQuickFilter}
+            onSearch={setSearchQuery}
+            searchQuery={searchQuery}
+            searchInputRef={searchInputRef}
+            employees={employees}
+            userRole={userRole}
+          />
+        )}
+
+        {/* Main scrollable content */}
         <div className="flex-1 overflow-auto">
           <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
                 {error}
               </div>
             )}
-
             {isLoading && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-700">
-                Refreshing dashboard data...
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-blue-600 text-sm">
+                Refreshing data…
               </div>
             )}
 
+            {/* ─── DASHBOARD TAB ─── */}
             {activeTab === 'dashboard' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MetricCard
-                    title="Total Records"
-                    value={totalRecords}
-                    subtitle={userRole === 'admin' ? 'Across the full firm' : 'Your assigned workload'}
-                    icon={TrendingUp}
+                    title="Today's Filings"
+                    value={todayFilings}
+                    subtitle="Records created today"
+                    icon={ClipboardCheck}
+                    trend="Operational"
                   />
                   <MetricCard
-                    title="Total Revenue"
-                    value={formatCurrency(totalRevenue)}
-                    subtitle={`${dashboardTransactions.length} recent records`}
-                    icon={DollarSign}
+                    title="Pending Payments"
+                    value={formatCurrency(pendingPaymentsValue)}
+                    subtitle="Uncollected revenue"
+                    icon={CreditCard}
+                    variant="warning"
                   />
                   <MetricCard
-                    title="Completed"
-                    value={completedRecords}
-                    subtitle={`Pending: ${pendingRecords}`}
-                    icon={Zap}
+                    title="Completed This Week"
+                    value={completedThisWeek}
+                    subtitle="Last 7 days"
+                    icon={CheckCircle}
+                    variant="success"
                   />
                   <MetricCard
-                    title="In Progress"
-                    value={inProgressRecords}
-                    subtitle={userRole === 'admin' ? 'All active filings' : 'Your active records'}
-                    icon={PieChart}
+                    title="Overdue Tasks"
+                    value={overdueTasks}
+                    subtitle="Needs immediate action"
+                    icon={AlertTriangle}
+                    variant="danger"
                   />
                 </div>
 
@@ -460,134 +602,67 @@ export const Dashboard = () => {
                 )}
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-lg font-bold text-gray-900">Recent Service Records</h2>
-                    <span className="text-sm text-gray-500">Showing the latest {dashboardTransactions.length}</span>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Service Records</h2>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Latest {dashboardTransactions.length}
+                    </span>
                   </div>
                   <TransactionTable
                     transactions={dashboardTransactions}
                     onRowClick={setSelectedRecord}
+                    onEdit={handleEdit}
                   />
                 </div>
               </>
             )}
 
+            {/* ─── SERVICE RECORDS TAB ─── */}
             {activeTab === 'records' && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 block mb-2">Service Type</label>
-                      <select
-                        value={filters.serviceType}
-                        onChange={(e) => setFilters((current) => ({ ...current, serviceType: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">All Services</option>
-                        {Object.keys(SERVICE_LABELS).map((serviceType) => (
-                          <option key={serviceType} value={serviceType}>
-                            {SERVICE_LABELS[serviceType]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 block mb-2">Status</label>
-                      <select
-                        value={filters.status}
-                        onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">All Status</option>
-                        <option value="PENDING">Pending</option>
-                        <option value="IN_PROGRESS">Processing</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="ARCHIVED">Archived</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 block mb-2">Start Date</label>
-                      <input
-                        type="date"
-                        value={filters.startDate}
-                        onChange={(e) => handleDateChange('startDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 block mb-2">End Date</label>
-                      <input
-                        type="date"
-                        value={filters.endDate}
-                        onChange={(e) => handleDateChange('endDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFilters({
-                          serviceType: '',
-                          status: '',
-                          startDate: '',
-                          endDate: '',
-                        })
-                      }
-                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-900 font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      Reset Filters
-                    </button>
-                    <p className="text-sm text-gray-500">Filters use cached records loaded on this page.</p>
-                  </div>
-                </div>
-
-                <TransactionTable transactions={transactions} onRowClick={setSelectedRecord} />
-              </div>
+              <TransactionTable
+                transactions={transactions}
+                onRowClick={setSelectedRecord}
+                onEdit={handleEdit}
+              />
             )}
 
+            {/* ─── CLIENTS TAB ─── */}
             {activeTab === 'clients' && userRole === 'admin' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-bold text-gray-900">Clients</h2>
-                  <span className="text-sm text-gray-500">{clients.length} total</span>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Clients</h2>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{clients.length} total</span>
                 </div>
-
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[760px]">
                       <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Email</th>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Records</th>
+                        <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+                          <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Name</th>
+                          <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Email</th>
+                          <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Type</th>
+                          <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Records</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                         {clients.map((client) => (
-                          <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0">
+                            <td className="px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white">
                               {client.fullName || client.businessName || 'Unnamed'}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{client.email}</td>
-                            <td className="px-6 py-4 text-sm">
+                            <td className="px-6 py-2 text-sm text-gray-600 dark:text-gray-400">{client.email}</td>
+                            <td className="px-6 py-2 text-sm">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                                   client.type === 'ONE_TIME_CUSTOMER'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-purple-100 text-purple-800'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+                                    : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800'
                                 }`}
                               >
                                 {client.type === 'ONE_TIME_CUSTOMER' ? 'One-Time' : 'Business'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
+                            <td className="px-6 py-2 text-sm text-gray-600 dark:text-gray-400 tabular-nums">
                               {client.serviceRecords?.length || 0}
                             </td>
                           </tr>
@@ -599,18 +674,19 @@ export const Dashboard = () => {
               </div>
             )}
 
+            {/* ─── EMPLOYEES TAB ─── */}
             {activeTab === 'employees' && userRole === 'admin' && (
               <EmployeesView employeeStats={employeeStats} />
             )}
 
+            {/* Access denied banners */}
             {activeTab === 'clients' && userRole !== 'admin' && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800">
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
                 You do not have access to the client directory.
               </div>
             )}
-
             {activeTab === 'employees' && userRole !== 'admin' && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800">
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
                 You do not have access to employee management.
               </div>
             )}
@@ -618,13 +694,25 @@ export const Dashboard = () => {
         </div>
       </div>
 
+      {/* Modals */}
       {selectedRecord && (
-        <TransactionModal transaction={selectedRecord} onClose={() => setSelectedRecord(null)} />
+        <TransactionModal
+          transaction={selectedRecord}
+          onEdit={handleEdit}
+          onClose={() => setSelectedRecord(null)}
+        />
       )}
-
       <AddRecordModal
         isOpen={isAddRecordModalOpen}
         onClose={() => setIsAddRecordModalOpen(false)}
+        clients={clients}
+        token={token}
+        onSuccess={fetchDashboardData}
+      />
+      <EditRecordModal
+        isOpen={isEditRecordModalOpen}
+        onClose={() => setIsEditRecordModalOpen(false)}
+        record={recordToEdit}
         clients={clients}
         token={token}
         onSuccess={fetchDashboardData}
