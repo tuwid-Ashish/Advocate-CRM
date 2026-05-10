@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest, errorResponse, successResponse } from '@/lib/middleware';
+export const dynamic = 'force-dynamic';
+
 
 /**
  * GET /api/clients
