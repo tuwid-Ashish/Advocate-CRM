@@ -1,0 +1,333 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== ENUMS =====
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+}
+
+enum ServiceType {
+  PAN
+  TAN
+  GST_3B
+  GST_1
+  ITR
+  TDS
+  DSC
+}
+
+enum ServiceCategory {
+  ONE_TIME
+  RECURRING
+}
+
+enum AutomationType {
+  MANUAL
+  EXTENSION_FETCH
+}
+
+enum RecordStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CREDIT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+}
+
+enum ClientType {
+  ONE_TIME_CUSTOMER
+  BUSINESS_CLIENT
+}
+
+enum GSTType {
+  GST_3B
+  GST_1
+}
+
+enum FilingStatus {
+  PENDING
+  IN_PROGRESS
+  FILED
+}
+
+// ===== MODELS =====
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String   // hashed password
+  role      UserRole @default(EMPLOYEE)
+  active    Boolean  @default(true)
+
+  // Relations
+  createdRecords ServiceRecord[]
+  receivedPayments Payment[]
+  uploadedAttachments Attachment[] @relation("UploadedAttachments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+// Unified clients table for both one-time and recurring
+model Client {
+  id   String @id @default(cuid())
+  type ClientType
+
+  // For One-Time Customers
+  fullName String?
+  email    String  @unique
+  phone    String?
+  emailVerified Boolean @default(false)
+  verificationToken String?
+  verificationDate DateTime?
+
+  // For Business Clients
+  businessName String?
+  gstId        String?
+  panId        String?
+  businessPhone String?
+  businessEmail String?
+
+  // Address (for businesses)
+  addressStreet  String?
+  addressCity    String?
+  addressState   String?
+  addressPincode String?
+
+  // Contact Person (for businesses)
+  contactPersonName  String?
+  contactPersonPhone String?
+  contactPersonEmail String?
+
+  // Relations
+  serviceRecords ServiceRecord[]
+  gstFilings     GSTFiling[]
+  itrRecords     ITRRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([email])
+  @@index([businessName])
+  @@index([gstId])
+}
+
+model Service {
+  id              String          @id @default(cuid())
+  code            String          @unique
+  name            String
+  category        ServiceCategory
+  automationType  AutomationType
+  dataFormat      String?
+  active          Boolean         @default(true)
+  description     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([code])
+  @@index([category])
+}
+
+model ServiceRecord {
+  id             String        @id @default(cuid())
+  serviceType    ServiceType
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  status         RecordStatus  @default(PENDING)
+  
+  // Service-specific details stored as JSON
+  details        Json?
+  
+  // Payment relation (one-to-one, defined on ServiceRecord side)
+  payment        Payment?
+  
+  // Created by employee
+  createdById    String
+  createdBy      Employee      @relation(fields: [createdById], references: [id])
+
+  // Attachments
+  attachments    Attachment[]
+  
+  // Timestamps
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  completedDate  DateTime?
+  notes          String?
+
+  // Relations for specific service types
+  gstFilings     GSTFiling[]
+  itrRecord      ITRRecord?
+  oneTimeDetail  OneTimeServiceDetail?
+  simpleDetail   SimpleBusinessServiceDetail?
+
+  @@index([serviceType])
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+model OneTimeServiceDetail {
+  id              String        @id @default(cuid())
+  serviceRecordId String        @unique
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  customerName    String
+  phone           String?
+  email           String
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([email])
+}
+
+model SimpleBusinessServiceDetail {
+  id              String        @id @default(cuid())
+  serviceRecordId String        @unique
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  x               String
+  y               String
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([x])
+  @@index([y])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  serviceRecordId  String        @unique
+  serviceRecord    ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  
+  amount           Float
+  mode             PaymentMode
+  status           PaymentStatus @default(PENDING)
+  
+  transactionReference String?
+  
+  receivedDate     DateTime?
+  receivedById     String?
+  receivedBy       Employee?     @relation(fields: [receivedById], references: [id])
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([serviceRecordId])
+  @@index([status])
+  @@index([receivedDate])
+}
+
+model GSTFiling {
+  id                 String        @id @default(cuid())
+  serviceRecordId    String
+  serviceRecord      ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  
+  clientId           String
+  client             Client        @relation(fields: [clientId], references: [id])
+  
+  gstType            GSTType
+  gstNumber          String?
+  partyName          String
+  
+  month              String
+  monthNumber        Int
+  year               Int
+  
+  outwardSupply      Float?
+  inwardSupply       Float?
+  gstLiability       Float?
+  
+  filingStatus       FilingStatus  @default(PENDING)
+  filingDate         DateTime?
+  dueDate            DateTime?
+  
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([year, monthNumber])
+  @@index([gstNumber])
+  @@index([filingStatus])
+}
+
+model ITRRecord {
+  id                  String        @id @default(cuid())
+  serviceRecordId     String        @unique
+  serviceRecord       ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  
+  clientId            String
+  client              Client        @relation(fields: [clientId], references: [id])
+  
+  itrForm             String
+  financialYear       String
+  
+  grossTotalIncome    Float?
+  totalTaxableIncome  Float?
+  totalTaxPayable     Float?
+  refund              Float?
+  
+  sourceExtension     String?
+  fetchedAt           DateTime?
+  rawData             Json?
+  
+  filingStatus        FilingStatus  @default(PENDING)
+  filingDate          DateTime?
+  ackNumber           String?
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([financialYear])
+}
+
+model Attachment {
+  id                String        @id @default(cuid())
+  serviceRecordId   String
+  serviceRecord     ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  
+  fileName          String
+  filePath          String
+  fileSize          BigInt?
+  fileType          String?
+  
+  uploadedById      String
+  uploadedByEmployee Employee      @relation("UploadedAttachments", fields: [uploadedById], references: [id])
+  
+  uploadedAt        DateTime      @default(now())
+
+  @@index([serviceRecordId])
+  @@index([uploadedById])
+
+  @@map("attachments")
+}

@@ -8,7 +8,7 @@ export const TransactionModal = ({ transaction, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
+      <div className="bg-white rounded-lg max-w-md w-full shadow-xl flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Transaction Details</h2>
           <button
@@ -19,7 +19,7 @@ export const TransactionModal = ({ transaction, onClose }) => {
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-600 font-medium">Transaction ID</p>
@@ -47,6 +47,15 @@ export const TransactionModal = ({ transaction, onClose }) => {
             <p className="text-xs text-gray-600 font-medium">Service</p>
             <p className="text-sm font-semibold text-gray-900 mt-1">{transaction.service}</p>
           </div>
+
+          {transaction.serviceDetail && (
+            <div>
+              <p className="text-xs text-gray-600 font-medium">Service Details</p>
+              <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded p-2">
+                {transaction.serviceDetail}
+              </p>
+            </div>
+          )}
 
           <div>
             <p className="text-xs text-gray-600 font-medium">Handled by</p>

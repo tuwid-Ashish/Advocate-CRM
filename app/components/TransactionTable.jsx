@@ -41,6 +41,11 @@ export const TransactionTable = ({ transactions, onRowClick }) => {
               <p>
                 <span className="font-medium text-gray-700">Mode:</span> {txn.paymentMode}
               </p>
+              {txn.serviceDetail && (
+                <p className="col-span-2">
+                  <span className="font-medium text-gray-700">Details:</span> {txn.serviceDetail}
+                </p>
+              )}
               <p className="font-semibold text-gray-900">{formatCurrency(txn.amountReceived)}</p>
             </div>
           </button>
@@ -48,12 +53,13 @@ export const TransactionTable = ({ transactions, onRowClick }) => {
       </div>
 
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full min-w-[900px]">
+        <table className="w-full min-w-[1050px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Date</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Customer</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Service</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Details</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Employee</th>
               <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700">Amount</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Mode</th>
@@ -71,6 +77,9 @@ export const TransactionTable = ({ transactions, onRowClick }) => {
                 <td className="px-6 py-4 text-sm text-gray-900 font-medium">{formatDate(txn.date)}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{txn.customerName}</td>
                 <td className="px-6 py-4 text-sm text-gray-700">{txn.service}</td>
+                <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
+                  {txn.serviceDetail || '-'}
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-700">{txn.employee}</td>
                 <td className="px-6 py-4 text-sm text-gray-900 font-semibold text-right">
                   {formatCurrency(txn.amountReceived)}
