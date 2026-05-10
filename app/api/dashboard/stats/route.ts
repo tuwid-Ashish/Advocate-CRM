@@ -4,10 +4,12 @@
  * Returns metrics and stats based on user role
  */
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest, errorResponse, successResponse } from '@/lib/middleware';
-export const dynamic = 'force-dynamic';
 
 
 export async function GET(request: NextRequest) {

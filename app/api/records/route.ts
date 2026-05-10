@@ -1,15 +1,19 @@
 /**
  * Service Records API Routes
+/**
+ * Service Records API Routes
  * GET /api/records - List service records
  * POST /api/records - Create a new service record
  * GET /api/records/[id] - Get specific record
  * PUT /api/records/[id] - Update record
  */
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest, errorResponse, successResponse } from '@/lib/middleware';
-export const dynamic = 'force-dynamic';
 
 
 /**

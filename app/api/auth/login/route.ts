@@ -3,11 +3,13 @@
  * POST /api/auth/login
  */
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { comparePassword, createSessionResponse } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/middleware';
-export const dynamic = 'force-dynamic';
 
 
 export async function POST(request: NextRequest) {

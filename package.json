@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "cleanup": "node scripts/cleanup.js",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

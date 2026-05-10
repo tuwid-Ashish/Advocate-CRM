@@ -1,16 +1,21 @@
 /**
  * Clients API Routes
  * GET /api/clients - List all clients (filtered by role)
+/**
+ * Clients API Routes
+ * GET /api/clients - List all clients (filtered by role)
  * POST /api/clients - Create a new client
  * GET /api/clients/[id] - Get specific client
  * PUT /api/clients/[id] - Update client
  * DELETE /api/clients/[id] - Delete client
  */
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest, errorResponse, successResponse } from '@/lib/middleware';
-export const dynamic = 'force-dynamic';
 
 
 /**

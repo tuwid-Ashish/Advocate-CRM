@@ -5,10 +5,14 @@
  * POST /api/auth/logout - Logout (client-side only, for token clearing)
  */
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, comparePassword, createSessionResponse } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/middleware';
+
 
 /**
  * POST /api/auth/register
