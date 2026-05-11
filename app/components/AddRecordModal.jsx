@@ -15,7 +15,7 @@ const BUSINESS_SERVICES = [
   { value: 'DSC', label: 'DSC' },
 ];
 
-const GST_TYPES = [
+const GST_SUBCATEGORIES = [
   { value: 'GST_3B', label: 'GST 3B' },
   { value: 'GST_1', label: 'GST 1' },
 ];
@@ -78,7 +78,25 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Auto-fill partyName with business name when clientId is selected for GST
+    if (name === 'clientId' && formData.businessService === 'GST') {
+      const selectedClient = businessClients.find(c => c.id === value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        partyName: selectedClient?.businessName || ''
+      }));
+    } else if (name === 'businessService') {
+      // Reset partyName if switching away from GST
+      const newFormData = { ...formData, [name]: value };
+      if (value !== 'GST') {
+        newFormData.partyName = '';
+      }
+      setFormData(newFormData);
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const postJson = async (url, payload) => {
@@ -308,6 +326,20 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
                           {BUSINESS_SERVICES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </div>
+
+                      {formData.businessService === 'GST' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 ml-1">GST Type</label>
+                          <select
+                            name="gstType"
+                            value={formData.gstType}
+                            onChange={handleChange}
+                            className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                          >
+                            {GST_SUBCATEGORIES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -404,8 +436,11 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
                             name="partyName"
                             value={formData.partyName}
                             onChange={handleChange}
+                            disabled={!!formData.clientId}
                             placeholder="Party Name *"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                            className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none ${
+                              formData.clientId ? 'opacity-75 cursor-not-allowed bg-gray-100 dark:bg-gray-800' : ''
+                            }`}
                           />
                           <div className="grid grid-cols-2 gap-3">
                             <select
