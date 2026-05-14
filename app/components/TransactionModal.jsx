@@ -1,11 +1,30 @@
 'use client';
 
-import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateShort, getStatusColor } from '@/lib/utils';
 import { X, User, Briefcase, CreditCard, Clock, FileText } from 'lucide-react';
 import { ServiceBadge } from './ServiceBadge';
 
 export const TransactionModal = ({ transaction, onClose, onEdit }) => {
   if (!transaction) return null;
+
+  const record = transaction.record || {};
+  const details = record.details || {};
+  const itr = record.itrRecord || {};
+  const isItr = record.serviceType === 'ITR' || transaction.service === 'ITR';
+  const itrFields = isItr
+    ? [
+        { label: 'ITR Form', value: itr.itrForm || details.itr_form },
+        { label: 'Assessment Year', value: itr.financialYear || details.assessment_year },
+        { label: 'Filing Status', value: itr.filingStatus || details.filing_status },
+        {
+          label: 'Filing Date',
+          value: formatDateShort(itr.filingDate || details.filing_date),
+        },
+        { label: 'Total Income', value: itr.grossTotalIncome || details.total_income },
+        { label: 'Tax Paid', value: itr.totalTaxPayable || details.tax_paid },
+        { label: 'Refund Status', value: details.refund_status },
+      ].filter((item) => item.value)
+    : [];
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -44,7 +63,7 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
                 <User className="w-3 h-3" /> Customer
               </p>
               <p className="text-sm font-bold text-gray-900 dark:text-white">{transaction.customerName}</p>
-              <p className="text-xs text-gray-500 tabular-nums">{transaction.phone}</p>
+              <p className="text-xs text-gray-500 tabular-nums">{transaction.phone ||`PAN : ${transaction.record.client.panId}`}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -65,6 +84,26 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
               </p>
               <div className="bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-lg p-3 text-xs text-slate-700 dark:text-gray-300 leading-relaxed font-medium">
                 {transaction.serviceDetail}
+              </div>
+            </div>
+          )}
+
+          {itrFields.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <FileText className="w-3 h-3" /> ITR Details
+              </p>
+              <div className="bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-lg p-3 text-xs text-slate-700 dark:text-gray-300">
+                <div className="grid grid-cols-2 gap-2">
+                  {itrFields.map((item) => (
+                    <div key={item.label}>
+                      <p className="text-[10px] uppercase tracking-widest text-gray-400">{item.label}</p>
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 break-words">
+                        {String(item.value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

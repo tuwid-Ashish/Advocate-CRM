@@ -12,6 +12,7 @@ export const TransactionTable = ({ transactions, onRowClick, onEdit }) => {
       </div>
     );
   }
+  {transactions.map((txn) =>console.log(txn))}
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">

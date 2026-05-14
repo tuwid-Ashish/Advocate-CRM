@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
               email: true,
               phone: true,
               businessPhone: true,
+              panId: true,
             },
           },
           createdBy: {

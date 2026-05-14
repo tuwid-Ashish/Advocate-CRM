@@ -4,10 +4,10 @@
 /node_modules
 /.pnp
 .pnp.js
-
+/kdk-sync-extension
 # testing
 /coverage
-
+/extension
 # next.js
 /.next/
 /out/

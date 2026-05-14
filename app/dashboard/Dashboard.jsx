@@ -18,7 +18,7 @@ import {
 } from '@/app/components/Charts';
 import { EmployeesView } from '@/app/components/EmployeesView';
 import { Sidebar } from '@/app/components/Sidebar';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDateShort } from '@/lib/utils';
 import {
   Plus,
   ClipboardCheck,
@@ -57,6 +57,7 @@ const PAYMENT_LABELS = {
 
 function buildServiceDetail(record) {
   const details = record.details || {};
+  const itr = record.itrRecord || {};
   const payment = record.payment || {};
   const amount = Number(payment.amount || 0);
   const mode = PAYMENT_LABELS[payment.mode] || payment.mode || 'Cash';
@@ -87,6 +88,22 @@ function buildServiceDetail(record) {
 
   if (details.kind === 'ONE_TIME') {
     return `Email: ${details.email || 'Not set'} | Phone: ${details.phone || 'Not set'}`;
+  }
+
+  if (record.serviceType === 'ITR') {
+    const itrForm = itr.itrForm || details.itr_form || 'ITR';
+    const ay = itr.financialYear || details.assessment_year || 'N/A';
+    const filingStatus = itr.filingStatus || details.filing_status || 'Unknown';
+    const filingDateRaw = itr.filingDate || details.filing_date || '';
+    const filingDate = formatDateShort(filingDateRaw);
+    const totalIncome = itr.grossTotalIncome || details.total_income;
+    const taxPaid = itr.totalTaxPayable || details.tax_paid;
+
+    const datePart = filingDate ? ` | Filed ${filingDate}` : '';
+    const incomePart = totalIncome ? ` | Income ${totalIncome}` : '';
+    const taxPart = taxPaid ? ` | Tax ${taxPaid}` : '';
+
+    return `${itrForm} | AY ${ay} | ${filingStatus}${datePart}${incomePart}${taxPart}`;
   }
 
   return record.notes || '';
