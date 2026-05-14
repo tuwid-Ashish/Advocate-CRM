@@ -143,6 +143,25 @@ async function main() {
           active: true,
         },
       }),
+    prisma.employee.create({
+        data: {
+          name: 'Mina kumari',
+          email: 'mina@example.com',
+          phone: '9876543223',
+          password: "employee123",
+          role: 'EMPLOYEE',
+          active: true,
+        },
+      }),
+      prisma.employee.create({
+        data: {
+        name: "Extension Integration",
+        email: "system-extension@domain.com",
+        password: "system-generated-no-login",
+        role: "ADMIN",
+        active: false,
+        },
+      }),
     ]);
 
     console.log(`✅ Created ${employees.length} employees`);

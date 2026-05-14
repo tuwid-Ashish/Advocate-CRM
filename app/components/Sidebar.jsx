@@ -42,7 +42,7 @@ export const Sidebar = ({
         <div className={`p-4 border-b border-gray-800 shrink-0 ${isCollapsed ? 'flex justify-center' : ''}`}>
           <div className="flex items-center justify-between">
             <div className={isCollapsed ? 'hidden' : 'block'}>
-              <h1 className="text-lg font-bold truncate">Finance</h1>
+              <h1 className="text-lg font-bold truncate">Advocate Finance</h1>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">Management</p>
             </div>
             <button
@@ -105,7 +105,32 @@ export const Sidebar = ({
           </div>
         </nav>
 
-        <div className="px-3 py-3 border-t border-gray-800 shrink-0">
+        <div className="px-3 py-4 border-t border-gray-800 shrink-0 space-y-3">
+          {/* Built with Zarexa */}
+          <button
+            type="button"
+            onClick={() => window.open('https://www.zarexa.tech', '_blank')}
+            title={isCollapsed ? 'Zarexa' : 'Built with Zarexa'}
+            className={`w-full flex items-center rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-all text-sm font-medium ${
+              isCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-2.5'
+            }`}
+          >
+            <img
+              src="https://www.zarexa.tech/images/zarexa-logo.png"
+              alt="Zarexa"
+              className="w-5 h-5 shrink-0 object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            {!isCollapsed && (
+              <span className="text-xs text-gray-500 truncate">
+                Built by <span className="font-semibold text-gray-300">Zarexa</span>
+              </span>
+            )}
+          </button>
+
+          {/* Logout */}
           <button
             type="button"
             onClick={onLogout}

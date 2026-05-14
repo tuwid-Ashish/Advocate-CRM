@@ -21,6 +21,8 @@ import { Sidebar } from '@/app/components/Sidebar';
 import { formatCurrency, formatDateShort } from '@/lib/utils';
 import {
   Plus,
+  Download,
+  RefreshCw,
   ClipboardCheck,
   CheckCircle,
   AlertTriangle,
@@ -141,6 +143,55 @@ function buildCounts(transactions, key) {
     acc[value] = (acc[value] || 0) + 1;
     return acc;
   }, {});
+}
+
+function toCsvValue(value) {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (/["]|,|\n/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function buildExportRows(transactions) {
+  return transactions.map((txn) => {
+    const record = txn.record || {};
+    const details = record.details || {};
+    const itr = record.itrRecord || {};
+    const gst = record.gstFilings?.[0] || {};
+    const oneTime = record.oneTimeDetail || {};
+    const simple = record.simpleDetail || {};
+
+    return {
+      id: txn.id,
+      createdDate: formatDateShort(txn.date),
+      customerName: txn.customerName,
+      phone: txn.phone,
+      service: txn.service,
+      status: txn.status,
+      employee: txn.employee,
+      paymentMode: txn.paymentMode,
+      amountReceived: txn.amountReceived,
+      notes: txn.notes,
+      serviceDetail: txn.serviceDetail,
+      itrForm: itr.itrForm || details.itr_form,
+      assessmentYear: itr.financialYear || details.assessment_year,
+      filingStatus: itr.filingStatus || details.filing_status,
+      filingDate: formatDateShort(itr.filingDate || details.filing_date),
+      totalIncome: itr.grossTotalIncome || details.total_income,
+      taxPaid: itr.totalTaxPayable || details.tax_paid,
+      refundStatus: details.refund_status,
+      gstParty: gst.partyName || details.partyName,
+      gstType: gst.gstType || details.gstType,
+      gstMonth: gst.month || details.month,
+      gstYear: gst.year || details.year,
+      oneTimeEmail: oneTime.email || details.email,
+      oneTimePhone: oneTime.phone || details.phone,
+      simpleX: simple.x || details.x,
+      simpleY: simple.y || details.y,
+    };
+  });
 }
 
 export const Dashboard = () => {
@@ -443,6 +494,33 @@ export const Dashboard = () => {
     router.push('/login');
   };
 
+  const handleRefreshRecords = () => {
+    fetchDashboardData();
+  };
+
+  const handleDownloadRecords = () => {
+    const rows = buildExportRows(transactions);
+    if (!rows.length) return;
+
+    const headers = Object.keys(rows[0]);
+    const csvLines = [headers.join(',')];
+    rows.forEach((row) => {
+      const line = headers.map((key) => toCsvValue(row[key])).join(',');
+      csvLines.push(line);
+    });
+
+    const csvContent = csvLines.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `service-records-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (isBooting) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -521,6 +599,30 @@ export const Dashboard = () => {
               >
                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
               </button>
+
+              {activeTab === 'records' && (
+                <button
+                  type="button"
+                  onClick={handleRefreshRecords}
+                  disabled={isLoading}
+                  className="border border-gray-200 text-gray-600 px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh records"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              )}
+
+              {activeTab === 'records' && (
+                <button
+                  type="button"
+                  onClick={handleDownloadRecords}
+                  className="border border-gray-200 text-gray-600 px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Download</span>
+                </button>
+              )}
 
               {activeTab === 'records' && (
                 <button

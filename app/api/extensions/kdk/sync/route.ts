@@ -67,11 +67,20 @@ export async function POST(req: Request) {
 
     let syncCount = 0;
 
+    function dateformating(dateString: string | undefined | null): Date | null {
+      const [day, month, year] = dateString.split("-");
+      const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day)
+    );
+      return parsed;
+    }
     // 2. Insert or update records (one per AY per client)
     for (const ret of returns) {
       const financialYear = ret.assessment_year;
       const incomingStatus = mapFilingStatus(ret.filing_status);
-      const incomingFilingDate = ret.filing_date ? new Date(ret.filing_date) : null;
+      const incomingFilingDate = ret.filing_date ? dateformating(ret.filing_date) : null;
 
       const existing = await prisma.iTRRecord.findFirst({
         where: { clientId: client.id, financialYear },
