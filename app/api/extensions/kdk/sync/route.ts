@@ -67,29 +67,32 @@ export async function POST(req: Request) {
     if (payload.source === 'kdk_extension_dom_paam') {
       let upsertCount = 0;
       for (const record of payload.records) {
-        const [day, month, year] = record.date.split('/');
-        const applicationDate = new Date(`${year}-${month}-${day}`);
-
+        let applicationDate = new Date();
+        if (record.date) {
+            const [day, month, year] = record.date.split('/');
+            applicationDate = new Date(`${year}-${month}-${day}`);
+        }
+        
         await prisma.panApplication.upsert({
-          where: { ackNo: record.ackNo },
+          where: { ackNo: record.acknowledgmentNo || record.ackNo },
           update: {
-            couponNo: record.couponNo,
-            name: record.name,
+            couponNo: record.contactPerson, // Mapped Contact Person to couponNo for schema compatibility, or leave empty if schema allows
+            name: record.applicantName || record.name,
             applicationType: record.applicationType,
             date: applicationDate,
             status: record.status,
             pan: record.pan,
-            modeOfSubmission: record.modeOfSubmission,
+            modeOfSubmission: record.category, // Used extra fields
           },
           create: {
-            ackNo: record.ackNo,
-            couponNo: record.couponNo,
-            name: record.name,
+            ackNo: record.acknowledgmentNo || record.ackNo,
+            couponNo: record.contactPerson || '',
+            name: record.applicantName || record.name,
             applicationType: record.applicationType,
             date: applicationDate,
             status: record.status,
             pan: record.pan,
-            modeOfSubmission: record.modeOfSubmission,
+            modeOfSubmission: record.category || '',
           },
         });
         upsertCount++;
