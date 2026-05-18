@@ -71,6 +71,11 @@ enum FilingStatus {
   FILED
 }
 
+enum ApplicationSourceType {
+  TAN
+  PTDS
+}
+
 // ===== MODELS =====
 
 model Employee {
@@ -202,6 +207,7 @@ model OneTimeServiceDetail {
   customerName    String
   phone           String?
   email           String
+  reference       String
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -330,4 +336,48 @@ model Attachment {
   @@index([uploadedById])
 
   @@map("attachments")
+}
+
+// ===== EXTENSION FETCHED DATA =====
+
+model TanPtdsApplication {
+  id                String                @id @default(cuid())
+  sourceType        ApplicationSourceType
+  acknowledgmentNo  String                @unique
+  receiptDate       DateTime
+  tan               String?
+  category          String
+  applicantName     String
+  applicationType   String
+  changesRequested  String?
+  userId            String
+  feesCharged       Float
+
+  fetchedAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([receiptDate])
+  @@index([sourceType])
+  @@index([userId])
+  @@index([applicantName])
+}
+
+model PanApplication {
+  id                String    @id @default(cuid())
+  ackNo             String    @unique
+  couponNo          String?
+  name              String
+  applicationType   String
+  date              DateTime
+  status            String
+  pan               String?
+  modeOfSubmission  String
+
+  fetchedAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([pan])
+  @@index([name])
 }

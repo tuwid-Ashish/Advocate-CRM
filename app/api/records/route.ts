@@ -178,7 +178,8 @@ export async function POST(request: NextRequest) {
           },
           customerName: details.customerName,
           phone: details.phone || null,
-          email: details.email,
+          email: details.email || null,
+          reference: details.reference || null,
         },
       });
     }

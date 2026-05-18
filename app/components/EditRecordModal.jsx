@@ -73,6 +73,7 @@ export const EditRecordModal = ({
         customerName: details.customerName || '',
         customerPhone: details.phone || '',
         customerEmail: details.email || '',
+        customerReference: details.reference || '',
         partyName: details.partyName || '',
         gstMonth: String(details.monthNumber || new Date().getMonth() + 1),
         gstYear: String(details.year || new Date().getFullYear()),
@@ -114,6 +115,7 @@ export const EditRecordModal = ({
           customerName: formData.customerName,
           phone: formData.customerPhone,
           email: formData.customerEmail,
+          reference: formData.customerReference,
         };
       } else if (detailsKind === 'GST' || ['GST_3B', 'GST_1'].includes(record?.record?.serviceType)) {
         details = {
@@ -151,7 +153,8 @@ export const EditRecordModal = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update record');
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || data?.message || 'Failed to update record');
       }
 
       await onSuccess();
@@ -287,6 +290,13 @@ export const EditRecordModal = ({
                       placeholder="Email Address"
                       name="customerEmail"
                       value={formData.customerEmail}
+                      onChange={handleChange}
+                    />
+                    <InputField
+                      icon={User}
+                      placeholder="Reference"
+                      name="customerReference"
+                      value={formData.customerReference}
                       onChange={handleChange}
                     />
                   </div>
@@ -484,42 +494,43 @@ export const EditRecordModal = ({
               </p>
             </div>
           )}
-        </form>
 
-        {/* FOOTER */}
-        <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-t border-gray-200 dark:border-gray-800 px-6 py-4 flex flex-col sm:flex-row justify-between gap-4">
-
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleting || isLoading}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-rose-200 dark:border-rose-900/30 text-rose-600 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete Record
-          </button>
-
-          <div className="flex gap-3">
+          {/* FOOTER */}
+          <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-t border-gray-200 dark:border-gray-800 px-6 py-4 flex flex-col sm:flex-row justify-between gap-4">
 
             <button
               type="button"
-              onClick={onClose}
-              className="px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              onClick={handleDelete}
+              disabled={isDeleting || isLoading}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-rose-200 dark:border-rose-900/30 text-rose-600 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
             >
-              Cancel
+              <Trash2 className="w-4 h-4" />
+              Delete Record
             </button>
 
-            <button
-              type="submit"
-              disabled={isLoading || isDeleting}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
+            <div className="flex gap-3">
 
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUpdate}
+                disabled={isLoading || isDeleting}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+
+                {isLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

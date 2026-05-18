@@ -63,7 +63,7 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
                 <User className="w-3 h-3" /> Customer
               </p>
               <p className="text-sm font-bold text-gray-900 dark:text-white">{transaction.customerName}</p>
-              <p className="text-xs text-gray-500 tabular-nums">{transaction.phone ||`PAN : ${transaction.record.client.panId}`}</p>
+              <p className="text-sm text-gray-500 font-semibold tabular-nums">{transaction.phone ||`PAN : ${transaction.record.client.panId}`}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -109,7 +109,7 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
           )}
 
           {/* Financials Box */}
-          <div className="bg-blue-600 rounded-xl p-5 text-white shadow-lg shadow-blue-200">
+         { itrFields.length == 0 &&  <div className="bg-blue-600 rounded-xl p-5 text-white shadow-lg shadow-blue-200">
             <div className="flex items-center justify-between opacity-80 mb-1">
               <p className="text-[10px] font-bold uppercase tracking-widest">Total Amount</p>
               <CreditCard className="w-4 h-4" />
@@ -127,7 +127,7 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
                 <p className="text-xs font-bold mt-1">Confirmed</p>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Notes */}
           {transaction.notes && (

@@ -20,7 +20,88 @@ export async function POST(req: Request) {
     const payload = await req.json();
     console.log("Received KDK sync data:", payload);
 
-    const sourceOk = typeof payload.source === "string" && payload.source.startsWith("kdk_extension");
+    // Handle TAN/PTDS data
+    if (payload.source === 'kdk_extension_dom_tan_ptds') {
+      const sourceType = payload.page.includes('/tan') ? 'TAN' : 'PTDS';
+      let upsertCount = 0;
+
+      for (const record of payload.records) {
+        const [day, month, year] = record.receiptDate.split('/');
+        const receiptDate = new Date(`${year}-${month}-${day}`);
+
+        await prisma.tanPtdsApplication.upsert({
+          where: { acknowledgmentNo: record.acknowledgmentNo },
+          update: {
+            receiptDate: receiptDate,
+            tan: record.tan,
+            category: record.category,
+            applicantName: record.applicantName,
+            applicationType: record.applicationType,
+            changesRequested: record.changesRequested,
+            userId: record.userId,
+            feesCharged: record.feesCharged,
+            sourceType: sourceType,
+          },
+          create: {
+            acknowledgmentNo: record.acknowledgmentNo,
+            receiptDate: receiptDate,
+            tan: record.tan,
+            category: record.category,
+            applicantName: record.applicantName,
+            applicationType: record.applicationType,
+            changesRequested: record.changesRequested,
+            userId: record.userId,
+            feesCharged: record.feesCharged,
+            sourceType: sourceType,
+          },
+        });
+        upsertCount++;
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Successfully upserted ${upsertCount} ${sourceType} records.`,
+      });
+    }
+
+    // Handle PAAM data
+    if (payload.source === 'kdk_extension_dom_paam') {
+      let upsertCount = 0;
+      for (const record of payload.records) {
+        const [day, month, year] = record.date.split('/');
+        const applicationDate = new Date(`${year}-${month}-${day}`);
+
+        await prisma.panApplication.upsert({
+          where: { ackNo: record.ackNo },
+          update: {
+            couponNo: record.couponNo,
+            name: record.name,
+            applicationType: record.applicationType,
+            date: applicationDate,
+            status: record.status,
+            pan: record.pan,
+            modeOfSubmission: record.modeOfSubmission,
+          },
+          create: {
+            ackNo: record.ackNo,
+            couponNo: record.couponNo,
+            name: record.name,
+            applicationType: record.applicationType,
+            date: applicationDate,
+            status: record.status,
+            pan: record.pan,
+            modeOfSubmission: record.modeOfSubmission,
+          },
+        });
+        upsertCount++;
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Successfully upserted ${upsertCount} PAN application records.`,
+      });
+    }
+
+    // Original ITR handling logic
+    const sourceOk = typeof payload.source === "string" && (payload.source.startsWith("kdk_extension_api") || payload.source.startsWith("kdk_extension_dom"));
     if (!sourceOk || !payload.client || !Array.isArray(payload.returns)) {
       return NextResponse.json({ error: "Invalid payload structure" }, { status: 400 });
     }

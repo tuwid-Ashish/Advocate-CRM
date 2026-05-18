@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, LayoutDashboard, LogOut, Settings, Users, X } from 'lucide-react';
+import { FileText, LayoutDashboard, LogOut, Settings, Users, X, AppWindow } from 'lucide-react';
 
 export const Sidebar = ({
   activeTab,
@@ -16,8 +16,9 @@ export const Sidebar = ({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'records', label: 'Service Records', icon: FileText },
+    { id: 'applications', label: 'Applications', icon: AppWindow },
   ];
-
+  
   if (userRole === 'admin') {
     menuItems.push({ id: 'clients', label: 'Clients', icon: Users });
     menuItems.push({ id: 'employees', label: 'Employees', icon: Settings });

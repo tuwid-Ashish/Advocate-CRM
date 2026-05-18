@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'CA Operations Platform',
-  description: 'Compliance operations dashboard for CA office workflows',
+  title: 'Advocate Operations Platform',
+  description: 'Compliance operations dashboard for Advocate office workflows',
 };
 
 export default function RootLayout({ children }) {

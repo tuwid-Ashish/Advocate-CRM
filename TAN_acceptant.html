@@ -1,0 +1,663 @@
+<body style="" class="">
+    <style>
+        marquee {
+            width: 100%;
+            color: red;
+            font-size: 20px;
+        }
+    </style>
+    <marquee direction="scroll" style="color:#000" scrollamount="4" onmouseover="stop()" onmouseout="start()"><b><i>
+                <font color="blue">
+                    <blink>New - </blink>
+                </font>
+            </i></b><b>Important:</b> As per The Income Tax Department's mandate, <b>Form 24G/137 Statements will be
+            accepted only after successful OTP-based authentication.</b> OTP will be sent to the Accounts Officer's
+        registered mobile number and email ID available with Protean as mentioned below. Ensure your details are updated
+        by contacting your jurisdictional CIT-TDS office</marquee>
+
+
+
+
+
+    <input type="hidden" id="dscSerailNo" value="2f5b3dad0989">
+    <input type="hidden" id="dscCA" value="Verasys Sub CA 2022">
+    <input type="hidden" id="paamLogOffUrl" value="/paam/LogOff.html">
+    <input type="hidden" id="userId" value="0816701">
+    <!--  input type="hidden" id="billingLimit" value="--" /-->
+
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <div class="navbar-header">
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#bs-example-navbar-collapse-1" aria-controls="bs-example-navbar-collapse-1"
+                    aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <a class="navbar-brand" href="/sam/">
+                    <img alt="NSDL Logo" src="/sam/resources/images/protean-logo.png" class="nsdl-logo">
+                </a>
+            </div>
+
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">e-TDS/TCS
+                            <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/etds/acceptance">Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/etds/nonacceptance">Non Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/etds/regeneration">Reciept Regeneration</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/etds">Acceptance Reports</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/nonaccreports/etds">Non Acceptance Reports</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/form27a/upload">Scan Image Upload</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/27apendncy">TIN FC Branch Wise Pendancy
+                                    Report</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/27a">TIN FC Branch Wise ScanDocs
+                                    Acceptance Report</a></li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">Paper
+                            TDS/TCS <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/ptds/acceptance">Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/ptds/nonacceptance">Non Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/ptds/regeneration">Reciept Regeneration</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/ptds">Acceptance Reports</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/nonaccreports/ptds">Non Acceptance Reports</a></li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">TAN <span
+                                class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/tan/acceptance/new">New Application</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/tan/acceptance/cr">Change Request Application</a>
+                            </li>
+
+                            <li><a class="dropdown-item" href="/sam/tan/nonacceptance">Non Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/tan/regeneration">Receipt Regeneration</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/tan">Acceptance Reports</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/nonaccreports/tan">Non Acceptance Reports</a></li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">Form 24G
+                            <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/form24g/acceptance">Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/form24g/nonacceptance">Non Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/form24g/regeneration">Reciept Regeneration</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/form24g">Acceptance Reports</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/nonaccreports/form24g">Non Acceptance Reports</a>
+                            </li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">AIR <span
+                                class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/air/acceptance">Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/air/nonacceptance">Non Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/air/regeneration">Reciept Regeneration</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/accreports/air">Acceptance Reports</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/nonaccreports/air">Non Acceptance Reports</a></li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">Circulars/
+                            Non Circulars <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/circulars">View Circulars</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/noncirculars">View / Download Non Circulars</a></li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">SFT <span
+                                class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/sftu/acceptance">SFT Acceptance</a></li>
+
+                            <li><a class="dropdown-item" href="/sam/sftu/nonacceptance">SFT Non Acceptance</a></li>
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">Inspection
+                            Report <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+
+                            <li><a class="dropdown-item" href="/sam/inspectionreport">Upload Inspection Report</a></li>
+
+                        </ul>
+                    </li>
+
+                </ul>
+
+                <ul class="navbar-nav navbar-right">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" href="#">DINESH
+                            THAKUR (0816701) <span class="caret"></span></a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" id="dscInfoLink" href="javascript:void(0)">View DSC Info</a>
+                            </li>
+                            <li><a class="dropdown-item" id="changeDscLink" href="javascript:void(0)">Change Selected
+                                    DSC</a></li>
+                            <li role="separator" class="dropdown-divider"></li>
+                            <li align="center" items="--">Available Limit : --</li>
+                            <li role="separator" class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" id="logoutLink" href="/sam/logout">Logout <i
+                                        class="bi bi-power"></i></a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <script src="/sam/resources/js/menu.js"></script>
+
+
+
+
+
+    <input type="hidden" id="appContext" value="/sam/">
+
+    <div id="alertBox" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div id="modalHeader" class="modal-header">
+                    <h4 class="modal-title" id="modalTitle"></h4>
+                    <button type="button" class="close ms-auto" data-bs-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalBody"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="modalBtn" class="btn">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingModal" class="modal fade" data-backdrop="static" data-keyboard="false" tabindex="-1"
+        style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="loadingModalTitle">Loading <span id="wait">...</span></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sessionExpiredModal" class="modal fade" data-backdrop="static" data-keyboard="false" tabindex="-1"
+        role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-header-danger">
+                    <h4 class="modal-title">Session Expired</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Your session is expired, Please login again.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="modalRedirectBtn" class="btn btn-danger">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="/sam/resources/js/modals.js"></script>
+
+
+
+
+
+
+
+
+
+    <input type="hidden" id="generateReportUrl" value="/sam/accreports">
+    <input type="hidden" id="generateExcelCsvReportUrl" value="/sam/get">
+    <input type="hidden" id="excelCsvDownloadUrl"
+        value="/sam/resourcefromapp?attachment=true&amp;downloadedFileName=TAN_Acceptance_Report&amp;fileName=">
+
+
+    <script src="/sam/resources/js/sign.js"></script>
+    <link rel="stylesheet" href="/sam/resources/css/bootstrap-datepicker3.min.css">
+    <link rel="stylesheet" href="/sam/resources/css/reports.css">
+    <div class="container-fluid">
+        <form id="reportForm" action="javascript:void(0)" method="post">
+
+            <input id="module" name="module" type="hidden" value="TAN">
+            <input id="dateRangeCriteria" name="dateRangeCriteria" type="hidden" value="true">
+
+            <div class="row mt-4">
+                <div class="col-lg-12 col-md-12 col-sm-12">
+                    <div class="card">
+                        <div class="card-header bg-body-tertiary">Report View TAN Applications</div>
+                        <div class="card-body row">
+                            <div class="col-lg-4 col-md-4 col-sm-4">
+                                <blockquote>
+                                    <p>
+                                        <strong>Acknowledgment No Based Search</strong>
+                                    </p>
+                                    <hr>
+                                    <div class="row small-blockquote">
+                                        <div class="row">
+                                            <label for="tan"
+                                                class="col-lg-6 col-md-6 col-sm-6 fw-semibold">Acknowledgement
+                                                Number</label>
+                                            <div class="col-lg-6 col-md-6 col-sm-6">
+                                                <input id="ainTanAck" name="ainTanAck" class="form-control" type="text"
+                                                    value="" maxlength="14" disabled="disabled">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </blockquote>
+                            </div>
+                            <div class="col-lg-8 col-md-8 col-sm-8">
+                                <blockquote>
+                                    <p>
+                                        <strong>Date Range Search</strong>
+                                    </p>
+                                    <hr>
+                                    <div class="small-blockquote row">
+                                        <div class="col-md-6 d-flex align-items-center pe-4">
+                                            <label for="startDate"
+                                                class="me-1 w-25 fw-semibold form-label text-end">Start Date</label>
+                                            <div class="input-group date flex-grow-1">
+                                                <input id="startDate" name="startDate" class="form-control" type="text"
+                                                    value="">
+                                                <div class="input-group-addon cal-icon">
+                                                    <i class="bi bi-calendar3 fs-3 ms-3"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 d-flex align-items-center pe-4">
+                                            <label for="endDate" class="me-1 w-25 fw-semibold form-label text-end">End
+                                                Date</label>
+                                            <div class="input-group date flex-grow-1">
+                                                <input id="endDate" name="endDate" class="form-control" type="text"
+                                                    value="">
+                                                <div class="input-group-addon cal-icon">
+                                                    <i class="bi bi-calendar3 fs-3 ms-3"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </blockquote>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="row mt-3">
+            <div class="col-sm-12 col-md-12 col-lg-12">
+                <div class="row">
+                    <div class="offset-sm-2 offset-md-2 offset-lg-1 col-sm-2 col-md-2 col-md-3 d-grid gap-0 row-gap-2">
+                        <button class="btn btn-success btn-lg btn-block" id="search">
+                            Search <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+
+                    <div class="offset-sm-2 offset-md-2 offset-lg-1 col-sm-2 col-md-2 col-md-3 d-grid gap-0 row-gap-2">
+                        <button type="button" class="btn btn-primary btn-lg dropdown-toggle btn-block"
+                            data-bs-toggle="dropdown">
+                            Export <i class="bi bi-download"></i>
+                            <span class="caret"></span>
+                        </button>
+                        <ul
+                            class="col-sm-offset-1 col-md-offset-2 col-lg-offset-2 col-sm-3 col-md-3 col-md-2 col-xs-12 dropdown-menu">
+                            <li><a class="dropdown-item" href="javascript:void(0)" id="xlsLink">XLS</a></li>
+                            <li role="separator" class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" id="xlsxLink">XLSX</a></li>
+                            <li role="separator" class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" id="csvLink">CSV</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="offset-sm-2 offset-md-2 offset-lg-1 col-sm-2 col-md-2 col-md-3 d-grid gap-0 row-gap-2">
+                        <button class="btn btn-danger btn-lg btn-block" id="clear">
+                            Clear <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr>
+        <div class="row mt-4">
+            <div class="col-sm-12 col-md-12 col-lg-12">
+                <nav>
+                    <ul class="pagination" id="paginationList" style="display: none;">
+                        <li><a class="pageLink" id="1" href="javascript:void(0);"> 1 </a></li>
+                    </ul>
+                </nav>
+                <table class="table table-bordered table-condensed" id="reportTable" style="">
+                    <tbody>
+                        <tr>
+                            <th>Sr No.</th>
+                            <th>Acknowledgment No.</th>
+                            <th>Receipt Date</th>
+                            <th>TAN</th>
+                            <th>Category</th>
+                            <th>Applicant Name</th>
+                            <th>Application Type</th>
+                            <th>Changes Requested</th>
+                            <th>User Id</th>
+                            <th>Fees Charged</th>
+                        </tr>
+                        <tr>
+                            <td>1</td>
+                            <td>08167470030510</td>
+                            <td>15/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>AARTI DHAND</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816702</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>08167470030506</td>
+                            <td>15/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>ROMIL DHAND</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816702</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>08167470030495</td>
+                            <td>15/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>KARANVIR SINGH</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>08167470030484</td>
+                            <td>15/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>LAKESH JINDAL</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>08167470030473</td>
+                            <td>15/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>MASTER ENTERPRICES</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>08167470030462</td>
+                            <td>14/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>BECTOR RICE MILLS</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>08167470030451</td>
+                            <td>12/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>RIMPY JAIN</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>08167470030440</td>
+                            <td>07/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>GURMEET SINGH</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>08167470030436</td>
+                            <td>07/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>AMARJEET SINGH</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>08167470030425</td>
+                            <td>07/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>ARUN JAIN</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>11</td>
+                            <td>08167470030414</td>
+                            <td>07/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>SANJAY KAPOOR</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>12</td>
+                            <td>08167470030403</td>
+                            <td>06/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>PUNJAB COLD STORE</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816702</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>13</td>
+                            <td>08167470030392</td>
+                            <td>05/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>ANUPAM TIWARI</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>14</td>
+                            <td>08167470030381</td>
+                            <td>05/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>KAY KAY AUTO INDUSTRIES</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>15</td>
+                            <td>08167470030370</td>
+                            <td>05/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>M/S SANT ENGINEERS (INDIA)</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>16</td>
+                            <td>08167470030366</td>
+                            <td>04/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>BHATTAL STEEL FENCE LLP</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>17</td>
+                            <td>08167470030355</td>
+                            <td>04/05/2026</td>
+                            <td>NA</td>
+                            <td>Individual</td>
+                            <td>RIPANDEEP SINGH</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                        <tr>
+                            <td>18</td>
+                            <td>08167470030344</td>
+                            <td>02/05/2026</td>
+                            <td>NA</td>
+                            <td>LLP/Firm/Association of persons/Trust/Body of Individuals/Artificial Juridical
+                                person/Hindu Undivided Family</td>
+                            <td>SOOD BUILDING MATERIAL STORE</td>
+                            <td>New</td>
+                            <td>NA</td>
+                            <td>0816703</td>
+                            <td>77.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/sam/resources/js/bootstrap-datepicker.min.js"></script>
+    <script src="/sam/resources/js/reports.js"></script>
+
+
+
+
+
+
+
+
+    <footer class="footer">
+        <div class="container">
+            <p>© Copyright 2026 | Protean eGov Technologies Limited</p>
+        </div>
+    </footer>
+
+
+
+
+    <veepn-lock-screen>
+        <style>
+            @font-face {
+                font-family: FigtreeVF;
+                src: url(chrome-extension://majdfhpaihoncoakbjgbdhglocklcgno/fonts/FigtreeVF.woff2) format("woff2 supports variations"), url(chrome-extension://majdfhpaihoncoakbjgbdhglocklcgno/fonts/FigtreeVF.woff2) format("woff2-variations");
+                font-weight: 100 1000;
+                font-display: swap
+            }
+        </style>
+    </veepn-lock-screen>
+</body>

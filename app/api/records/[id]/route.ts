@@ -91,6 +91,7 @@ export async function PUT(
             customerName: details.customerName,
             phone: details.phone,
             email: details.email,
+            reference: details.reference,
           },
           update: {
             customerName: details.customerName,

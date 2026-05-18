@@ -9,6 +9,7 @@ import { TransactionModal } from '@/app/components/TransactionModal';
 import { AddRecordModal } from '@/app/components/AddRecordModal';
 import { EditRecordModal } from '@/app/components/EditRecordModal';
 import { AddClientModal } from '@/app/components/AddClientModal';
+import { EmployeesView } from '@/app/components/EmployeesView';
 import { FilterBar } from '@/app/components/FilterBar';
 import {
   PaymentModeChart,
@@ -16,7 +17,7 @@ import {
   StatusBreakdownChart,
   ServiceCountChart,
 } from '@/app/components/Charts';
-import { EmployeesView } from '@/app/components/EmployeesView';
+import ApplicationsView from '@/app/components/ApplicationsView';
 import { Sidebar } from '@/app/components/Sidebar';
 import { formatCurrency, formatDateShort } from '@/lib/utils';
 import {
@@ -33,6 +34,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
+// PanApplicationsView is rendered via ApplicationsView; avoid duplicate rendering
 
 const SERVICE_LABELS = {
   PAN: 'PAN',
@@ -69,8 +71,8 @@ function buildServiceDetail(record) {
   }
 
   if (record.oneTimeDetail) {
-    const { email, phone } = record.oneTimeDetail;
-    return `Email: ${email || 'Not set'} | Phone: ${phone || 'Not set'}`;
+    const { email, phone, reference } = record.oneTimeDetail;
+    return `Email: ${email || 'Not set'} | Phone: ${phone || 'Not set'} | Reference: ${reference || 'Not set'}`;
   }
 
   if (record.gstFilings?.length) {
@@ -79,7 +81,7 @@ function buildServiceDetail(record) {
     return `${filing.partyName || 'Party'} - ${gstType} ${filing.month || ''} ${filing.year || ''}`.trim();
   }
 
-  if (details.kind === 'SIMPLE_BUSINESS') {
+  if (details.kind === 'SIMPLE_BUSINESS' && record.serviceType !== 'ITR') {
     return `${details.x || 'x'} from ${details.y || 'y'} Rs ${amount} ${mode}`;
   }
 
@@ -194,10 +196,10 @@ function buildExportRows(transactions) {
   });
 }
 
-export const Dashboard = () => {
+export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
   const [token, setToken] = useState('');
@@ -578,12 +580,14 @@ export const Dashboard = () => {
                 <h1 className="text-xl sm:text-2xl font-bold truncate">
                   {activeTab === 'dashboard' && 'Dashboard'}
                   {activeTab === 'records' && 'Service Records'}
+                  {activeTab === 'applications' && 'Application Records'}
                   {activeTab === 'clients' && 'Clients'}
                   {activeTab === 'employees' && 'Employees'}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate dark:text-gray-400">
                   {activeTab === 'dashboard' && `Welcome back, ${userName}`}
                   {activeTab === 'records' && `${transactions.length} records shown`}
+                  {activeTab === 'applications' && 'PAN, TAN, and PTDS application tracking'}
                   {activeTab === 'clients' && `${clients.length} clients`}
                   {activeTab === 'employees' && 'Employee performance overview'}
                 </p>
@@ -676,8 +680,6 @@ export const Dashboard = () => {
                 Refreshing data…
               </div>
             )}
-
-            {/* ─── DASHBOARD TAB ─── */}
             {activeTab === 'dashboard' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -720,33 +722,81 @@ export const Dashboard = () => {
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Service Records</h2>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Latest {dashboardTransactions.length}
-                    </span>
-                  </div>
-                  <TransactionTable
-                    transactions={dashboardTransactions}
-                    onRowClick={setSelectedRecord}
-                    onEdit={handleEdit}
-                  />
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Service Records</h2>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Latest {dashboardTransactions.length}
+                  </span>
                 </div>
-              </>
-            )}
+                <TransactionTable
+                  transactions={dashboardTransactions}
+                  onRowClick={setSelectedRecord}
+                  onEdit={handleEdit}
+                />
+              </div>
+            </>
+          )}
 
-            {/* ─── SERVICE RECORDS TAB ─── */}
-            {activeTab === 'records' && (
-              <TransactionTable
-                transactions={transactions}
-                onRowClick={setSelectedRecord}
-                onEdit={handleEdit}
-              />
-            )}
+          {activeTab === 'records' && (
+            <>
+              {/*  <h1 className="text-2xl font-bold mb-6">Service Records</h1>
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  title="Today's Filings"
+                  value={todayFilings}
+                  subtitle="Records created today"
+                  icon={ClipboardCheck}
+                  trend="Operational"
+                />
+                <MetricCard
+                  title="Pending Payments"
+                  value={formatCurrency(pendingPaymentsValue)}
+                  subtitle="Uncollected revenue"
+                  icon={CreditCard}
+                  variant="warning"
+                />
+                <MetricCard
+                  title="Completed This Week"
+                  value={completedThisWeek}
+                  subtitle="Last 7 days"
+                  icon={CheckCircle}
+                  variant="success"
+                />
+                <MetricCard
+                  title="Overdue Tasks"
+                  value={overdueTasks}
+                  subtitle="Needs immediate action"
+                  icon={AlertTriangle}
+                  variant="danger"
+                />
+              </div> */}
 
-            {/* ─── CLIENTS TAB ─── */}
-            {activeTab === 'clients' && userRole === 'admin' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Service Records</h2>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Latest {dashboardTransactions.length}
+                  </span>
+                </div>
+                <TransactionTable
+                  transactions={dashboardTransactions}
+                  onRowClick={setSelectedRecord}
+                  onEdit={handleEdit}
+                />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'applications' && userRole === 'admin' && (
+            <>
+              <h1 className="text-2xl font-bold mb-6">Application Records</h1>
+              <ApplicationsView />
+            </>
+          )}
+
+          {activeTab === 'clients' && userRole === 'admin' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white">Clients</h2>
@@ -793,25 +843,34 @@ export const Dashboard = () => {
               </div>
             )}
 
-            {/* ─── EMPLOYEES TAB ─── */}
-            {activeTab === 'employees' && userRole === 'admin' && (
-              <EmployeesView employeeStats={employeeStats} />
-            )}
 
-            {/* Access denied banners */}
-            {activeTab === 'clients' && userRole !== 'admin' && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
-                You do not have access to the client directory.
-              </div>
-            )}
-            {activeTab === 'employees' && userRole !== 'admin' && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
-                You do not have access to employee management.
-              </div>
-            )}
-          </div>
+          {activeTab === 'employees' && userRole === 'admin' && (
+            <>
+              {/* <h1 className="text-2xl font-bold mb-6">Employees</h1> */}
+             <EmployeesView employeeStats={employeeStats} />
+            </>
+          )}
+
+          {activeTab === 'clients' && userRole !== 'admin' && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
+              You do not have access to the client directory.
+            </div>
+          )}
+          {activeTab === 'employees' && userRole !== 'admin' && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
+              You do not have access to employee management.
+            </div>
+          )}
+          {activeTab === 'applications' && userRole !== 'admin' && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
+              You do not have access to application records.
+            </div>
+          )}
+        </div>
         </div>
       </div>
+
+      {/* Applications view is rendered inside the main content area via <ApplicationsView /> */}
 
       {/* Modals */}
       {selectedRecord && (
