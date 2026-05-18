@@ -83,6 +83,7 @@ export async function POST(req: Request) {
             status: record.status,
             pan: record.pan,
             modeOfSubmission: record.category, // Used extra fields
+            fee: record.fee || 0,
           },
           create: {
             ackNo: record.acknowledgmentNo || record.ackNo,
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
             status: record.status,
             pan: record.pan,
             modeOfSubmission: record.category || '',
+            fee: record.fee || 0,
           },
         });
         upsertCount++;

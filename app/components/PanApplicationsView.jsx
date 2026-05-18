@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo } from 'react';
 import { MetricCard } from '@/app/components/MetricCard';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw, X } from 'lucide-react';
 
 export default function PanApplicationsView({ dateFilter = { startDate: '', endDate: '' } }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
   const filteredRecords = useMemo(() => {
     const { startDate, endDate } = dateFilter;
@@ -107,7 +108,11 @@ export default function PanApplicationsView({ dateFilter = { startDate: '', endD
               <tbody>
                 {filteredRecords.length ? (
                   filteredRecords.map(record => (
-                    <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                    <tr 
+                      key={record.id} 
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer"
+                      onClick={() => setSelectedRecord(record)}
+                    >
                       <td className="py-2 px-4 border-b border-gray-100 dark:border-gray-800">{record.ackNo}</td>
                       <td className="py-2 px-4 border-b border-gray-100 dark:border-gray-800">{record.name}</td>
                       <td className="py-2 px-4 border-b border-gray-100 dark:border-gray-800">{new Date(record.date).toLocaleDateString()}</td>
@@ -127,6 +132,80 @@ export default function PanApplicationsView({ dateFilter = { startDate: '', endD
           </div>
         )}
       </div>
+
+      {selectedRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">PAN Application Details</h3>
+              <button 
+                onClick={() => setSelectedRecord(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-center justify-between border border-blue-100 dark:border-blue-800/50">
+                <div>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Status</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{selectedRecord.status}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Appln Fee</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">₹{selectedRecord.fee?.toLocaleString() || '0'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Date</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{new Date(selectedRecord.date).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Applicant Name</label>
+                  <div className="text-base text-gray-900 dark:text-white font-medium">{selectedRecord.name}</div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Application Type</label>
+                  <div className="text-base text-gray-900 dark:text-white">{selectedRecord.applicationType}</div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Acknowledgment Number</label>
+                  <div className="text-base text-gray-900 dark:text-white tabular-nums">{selectedRecord.ackNo}</div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Coupon Number</label>
+                  <div className="text-base text-gray-900 dark:text-white">{selectedRecord.couponNo || <span className="text-gray-400 italic">Not available</span>}</div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">PAN Number</label>
+                  <div className="text-base text-gray-900 dark:text-white">{selectedRecord.pan || <span className="text-gray-400 italic">Pending/Not available</span>}</div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Mode of Submission</label>
+                  <div className="text-base text-gray-900 dark:text-white">{selectedRecord.modeOfSubmission || <span className="text-gray-400 italic">Not available</span>}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 dark:border-gray-700 mt-auto">
+              <button 
+                onClick={() => setSelectedRecord(null)}
+                className="w-full sm:w-auto px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
