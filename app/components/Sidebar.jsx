@@ -43,7 +43,7 @@ export const Sidebar = ({
         <div className={`p-4 border-b border-gray-800 shrink-0 ${isCollapsed ? 'flex justify-center' : ''}`}>
           <div className="flex items-center justify-between">
             <div className={isCollapsed ? 'hidden' : 'block'}>
-              <h1 className="text-lg font-bold truncate">Advocate Finance</h1>
+              <h1 className="text-lg font-bold truncate">Rishant Infotech</h1>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">Management</p>
             </div>
             <button
