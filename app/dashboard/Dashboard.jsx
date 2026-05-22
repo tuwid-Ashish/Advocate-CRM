@@ -218,6 +218,8 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
   const [isEditRecordModalOpen, setIsEditRecordModalOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState(null);
+  const [recordsPage, setRecordsPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
 
   // Refs for hotkey targets
   const searchInputRef = useRef(null);
@@ -269,14 +271,20 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
     setError('');
 
     try {
+      const recordPageSize = 500;
       const recordParams = new URLSearchParams();
       recordParams.set('skip', '0');
-      recordParams.set('take', '500');
+      recordParams.set('take', String(recordPageSize));
+
+      const fetchRecordPage = (skip) => {
+        const pageParams = new URLSearchParams(recordParams);
+        pageParams.set('skip', String(skip));
+        return fetch(`/api/records?${pageParams.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      };
 
       const requests = [
-        fetch(`/api/records?${recordParams.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
         fetch('/api/clients', {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -297,19 +305,40 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         }
       }
 
+      const firstRecordResponse = await fetchRecordPage(0);
       const responses = await Promise.all(requests);
 
-      if (!responses[0].ok) throw new Error('Failed to fetch service records');
-      if (!responses[1].ok) throw new Error('Failed to fetch clients');
+      if (!firstRecordResponse.ok) throw new Error('Failed to fetch service records');
+      if (!responses[0].ok) throw new Error('Failed to fetch clients');
 
-      const recordData = await responses[0].json();
-      const clientsData = await responses[1].json();
+      const recordData = await firstRecordResponse.json();
+      const clientsData = await responses[0].json();
 
-      setRecords(recordData.records || []);
+      const totalPages = recordData.pagination?.pages || 1;
+      const remainingRecordResponses = await Promise.all(
+        Array.from({ length: Math.max(totalPages - 1, 0) }, (_, index) =>
+          fetchRecordPage((index + 1) * recordPageSize)
+        )
+      );
+
+      for (const response of remainingRecordResponses) {
+        if (!response.ok) throw new Error('Failed to fetch service records');
+      }
+
+      const remainingRecordData = await Promise.all(
+        remainingRecordResponses.map((response) => response.json())
+      );
+
+      const allRecords = [
+        ...(recordData.records || []),
+        ...remainingRecordData.flatMap((page) => page.records || []),
+      ];
+
+      setRecords(allRecords);
       setClients(clientsData.clients || []);
 
-      if (fetchEmployees && responses[2] && responses[2].ok) {
-        const employeesData = await responses[2].json();
+      if (fetchEmployees && responses[1] && responses[1].ok) {
+        const employeesData = await responses[1].json();
         setEmployees(employeesData.employees || []);
       }
     } catch (requestError) {
@@ -388,6 +417,20 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
       return true;
     });
   }, [allTransactions, searchQuery, activeQuickFilter, filters]);
+
+  const recordsPageCount = Math.max(1, Math.ceil(transactions.length / recordsPerPage));
+  const activeRecordsPage = Math.min(recordsPage, recordsPageCount);
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (activeRecordsPage - 1) * recordsPerPage;
+    return transactions.slice(startIndex, startIndex + recordsPerPage);
+  }, [transactions, activeRecordsPage, recordsPerPage]);
+
+  useEffect(() => {
+    setRecordsPage((currentPage) => {
+      const nextPageCount = Math.max(1, Math.ceil(transactions.length / recordsPerPage));
+      return Math.min(currentPage, nextPageCount);
+    });
+  }, [transactions.length, recordsPerPage]);
 
   // Dashboard KPI metrics
   const todayFilings = useMemo(() => {
@@ -741,47 +784,57 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
 
           {activeTab === 'records' && (
             <>
-              {/*  <h1 className="text-2xl font-bold mb-6">Service Records</h1>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard
-                  title="Today's Filings"
-                  value={todayFilings}
-                  subtitle="Records created today"
-                  icon={ClipboardCheck}
-                  trend="Operational"
-                />
-                <MetricCard
-                  title="Pending Payments"
-                  value={formatCurrency(pendingPaymentsValue)}
-                  subtitle="Uncollected revenue"
-                  icon={CreditCard}
-                  variant="warning"
-                />
-                <MetricCard
-                  title="Completed This Week"
-                  value={completedThisWeek}
-                  subtitle="Last 7 days"
-                  icon={CheckCircle}
-                  variant="success"
-                />
-                <MetricCard
-                  title="Overdue Tasks"
-                  value={overdueTasks}
-                  subtitle="Needs immediate action"
-                  icon={AlertTriangle}
-                  variant="danger"
-                />
-              </div> */}
-
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Service Records</h2>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Latest {dashboardTransactions.length}
-                  </span>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Service Records</h2>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Showing {transactions.length === 0 ? 0 : (activeRecordsPage - 1) * recordsPerPage + 1}-{Math.min(activeRecordsPage * recordsPerPage, transactions.length)} of {transactions.length}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <span className="whitespace-nowrap">Rows per page</span>
+                      <select
+                        value={recordsPerPage}
+                        onChange={(e) => {
+                          setRecordsPerPage(Number(e.target.value));
+                          setRecordsPage(1);
+                        }}
+                        className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRecordsPage((page) => Math.max(1, page - 1))}
+                        disabled={activeRecordsPage === 1 || transactions.length === 0}
+                        className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Prev
+                      </button>
+                      <span className="text-sm text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
+                        Page {transactions.length === 0 ? 0 : activeRecordsPage} of {transactions.length === 0 ? 0 : recordsPageCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setRecordsPage((page) => Math.min(recordsPageCount, page + 1))}
+                        disabled={activeRecordsPage >= recordsPageCount || transactions.length === 0}
+                        className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <TransactionTable
-                  transactions={dashboardTransactions}
+                  transactions={paginatedTransactions}
                   onRowClick={setSelectedRecord}
                   onEdit={handleEdit}
                 />
