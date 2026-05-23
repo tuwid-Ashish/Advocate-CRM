@@ -63,6 +63,7 @@ async function ensureServices() {
     ['TAN', 'TAN Registration', 'ONE_TIME', 'MANUAL', 'SIMPLE'],
     ['GST_3B', 'GST Form 3B', 'RECURRING', 'MANUAL', 'GST_RECORD'],
     ['GST_1', 'GST Form 1', 'RECURRING', 'MANUAL', 'GST_RECORD'],
+    ['EXTRA_EXPENSE', 'Extra Expense', 'RECURRING', 'MANUAL', 'DETAILED_RECORD'],
     ['ITR', 'Income Tax Return', 'RECURRING', 'EXTENSION_FETCH', 'AUTO_FETCH_RECORD'],
     ['TDS', 'TDS Filing', 'RECURRING', 'MANUAL', 'DETAILED_RECORD'],
     ['DSC', 'Digital Signature Certificate', 'RECURRING', 'MANUAL', 'DETAILED_RECORD'],

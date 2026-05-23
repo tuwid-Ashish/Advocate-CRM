@@ -8,7 +8,6 @@ const QUICK_FILTERS = [
   { id: 'this_week', label: 'This Week' },
   { id: 'gst', label: 'GST' },
   { id: 'pan', label: 'PAN' },
-  { id: 'high_value', label: 'High Value' },
 ];
 
 export const FilterBar = ({ 
@@ -73,6 +72,22 @@ export const FilterBar = ({
 
         {/* Advanced Filters */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+          <select
+            value={filters.serviceType || ''}
+            onChange={(e) => onFilterChange({ ...filters, serviceType: e.target.value })}
+            className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+          >
+            <option value="">All Services</option>
+            <option value="PAN">PAN</option>
+            <option value="TAN">TAN</option>
+            <option value="GST_3B">GST 3B</option>
+            <option value="GST_1">GST 1</option>
+            <option value="ITR">ITR</option>
+            <option value="TDS">TDS</option>
+            <option value="DSC">DSC</option>
+            <option value="EXTRA_EXPENSE">Extra Expense</option>
+          </select>
+
           {userRole === 'admin' && (
             <select
               value={filters.employeeId || ''}

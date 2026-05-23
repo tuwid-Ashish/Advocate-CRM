@@ -9,6 +9,8 @@ import { TransactionModal } from '@/app/components/TransactionModal';
 import { AddRecordModal } from '@/app/components/AddRecordModal';
 import { EditRecordModal } from '@/app/components/EditRecordModal';
 import { AddClientModal } from '@/app/components/AddClientModal';
+import { EditClientModal } from '@/app/components/EditClientModal';
+import { ClientDetailModal } from '@/app/components/ClientDetailModal';
 import { EmployeesView } from '@/app/components/EmployeesView';
 import { FilterBar } from '@/app/components/FilterBar';
 import {
@@ -44,6 +46,7 @@ const SERVICE_LABELS = {
   ITR: 'ITR',
   TDS: 'TDS',
   DSC: 'DSC',
+  EXTRA_EXPENSE: 'Extra Expense',
 };
 
 const STATUS_LABELS = {
@@ -51,6 +54,13 @@ const STATUS_LABELS = {
   IN_PROGRESS: 'Processing',
   COMPLETED: 'Completed',
   ARCHIVED: 'Archived',
+};
+
+const PAYMENT_STATUS_LABELS = {
+  PENDING: 'Pending',
+  PARTIAL: 'Partial',
+  PAID: 'Paid',
+  COMPLETED: 'Paid',
 };
 
 const PAYMENT_LABELS = {
@@ -79,6 +89,23 @@ function buildServiceDetail(record) {
     const filing = record.gstFilings[0];
     const gstType = SERVICE_LABELS[filing.gstType] || filing.gstType || record.serviceType;
     return `${filing.partyName || 'Party'} - ${gstType} ${filing.month || ''} ${filing.year || ''}`.trim();
+  }
+
+  if (record.extraExpenseRecord) {
+    const expense = record.extraExpenseRecord;
+    const periodLabel = `${expense.month || ''} ${expense.year || ''}`.trim();
+    const amountLabel = expense.amount ? ` | Rs ${expense.amount}` : '';
+    const categoryLabel = expense.expenseCategory ? ` - ${expense.expenseCategory}` : '';
+    return `${expense.expenseTitle || 'Expense'}${categoryLabel}${periodLabel ? ` | ${periodLabel}` : ''}${amountLabel}`;
+  }
+
+  if (details.kind === 'EXTRA_EXPENSE' || record.serviceType === 'EXTRA_EXPENSE') {
+    const expenseAmount = details.amount || amount;
+    const expenseLabel = details.expenseTitle || details.title || 'Expense';
+    const categoryLabel = details.expenseCategory ? ` - ${details.expenseCategory}` : '';
+    const periodLabel = `${details.month || ''} ${details.year || ''}`.trim();
+    const amountLabel = expenseAmount ? ` | Rs ${expenseAmount}` : '';
+    return `${expenseLabel}${categoryLabel}${periodLabel ? ` | ${periodLabel}` : ''}${amountLabel}`;
   }
 
   if (details.kind === 'SIMPLE_BUSINESS' && record.serviceType !== 'ITR') {
@@ -120,6 +147,8 @@ function mapRecordToTransaction(record) {
   const employeeName = record.createdBy?.name || 'Unknown';
   const amountReceived = Number(payment.amount || 0);
   const rawStatus = STATUS_LABELS[record.status] || record.status || 'Pending';
+  const paymentStatusRaw = record.paymentStatus || payment.status || (amountReceived > 0 ? 'PAID' : 'PENDING');
+  const paymentStatus = PAYMENT_STATUS_LABELS[paymentStatusRaw] || paymentStatusRaw || 'Pending';
   const paymentMode = PAYMENT_LABELS[payment.mode] || payment.mode || 'Cash';
 
   return {
@@ -132,6 +161,7 @@ function mapRecordToTransaction(record) {
     amountReceived,
     amountPaid: amountReceived,
     paymentMode,
+    paymentStatus,
     status: rawStatus,
     serviceDetail: buildServiceDetail(record),
     notes: record.notes || '',
@@ -162,6 +192,7 @@ function buildExportRows(transactions) {
     const details = record.details || {};
     const itr = record.itrRecord || {};
     const gst = record.gstFilings?.[0] || {};
+    const expense = record.extraExpenseRecord || {};
     const oneTime = record.oneTimeDetail || {};
     const simple = record.simpleDetail || {};
 
@@ -188,6 +219,12 @@ function buildExportRows(transactions) {
       gstType: gst.gstType || details.gstType,
       gstMonth: gst.month || details.month,
       gstYear: gst.year || details.year,
+      expenseTitle: expense.expenseTitle || details.expenseTitle,
+      expenseCategory: expense.expenseCategory || details.expenseCategory,
+      expenseMonth: expense.month || details.month,
+      expenseYear: expense.year || details.year,
+      expenseAmount: expense.amount || details.amount,
+      paymentStatus: txn.paymentStatus,
       oneTimeEmail: oneTime.email || details.email,
       oneTimePhone: oneTime.phone || details.phone,
       simpleX: simple.x || details.x,
@@ -214,10 +251,13 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const [clients, setClients] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [isAddRecordModalOpen, setIsAddRecordModalOpen] = useState(false);
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
+  const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false);
   const [isEditRecordModalOpen, setIsEditRecordModalOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState(null);
+  const [clientToEdit, setClientToEdit] = useState(null);
   const [recordsPage, setRecordsPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
 
@@ -393,9 +433,6 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
           case 'pan':
             if (!txn.service.toUpperCase().includes('PAN')) return false;
             break;
-          case 'high_value':
-            if (txn.amountReceived < 10000) return false;
-            break;
         }
       }
 
@@ -531,6 +568,16 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const handleEdit = (txn) => {
     setRecordToEdit(txn);
     setIsEditRecordModalOpen(true);
+  };
+
+  const handleOpenClient = (client) => {
+    setSelectedClient(client);
+  };
+
+  const handleEditClient = (client) => {
+    setClientToEdit(client);
+    setIsEditClientModalOpen(true);
+    setSelectedClient(null);
   };
 
   const handleLogout = () => {
@@ -868,7 +915,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                         {clients.map((client) => (
-                          <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0">
+                          <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer" onClick={() => handleOpenClient(client)}>
                             <td className="px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white">
                               {client.fullName || client.businessName || 'Unnamed'}
                             </td>
@@ -933,6 +980,13 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
           onClose={() => setSelectedRecord(null)}
         />
       )}
+      {selectedClient && (
+        <ClientDetailModal
+          client={selectedClient}
+          onClose={() => setSelectedClient(null)}
+          onEdit={() => handleEditClient(selectedClient)}
+        />
+      )}
       <AddRecordModal
         isOpen={isAddRecordModalOpen}
         onClose={() => setIsAddRecordModalOpen(false)}
@@ -951,9 +1005,22 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
 
       <AddClientModal
         isOpen={isAddClientModalOpen}
-        onClose={() => setIsAddClientModalOpen(false)}
+        onClose={() => {
+          setIsAddClientModalOpen(false);
+        }}
         token={token}
         onSuccess={fetchDashboardData}
+      />
+      <EditClientModal
+        isOpen={isEditClientModalOpen}
+        onClose={() => {
+          setIsEditClientModalOpen(false);
+          setClientToEdit(null);
+        }}
+        token={token}
+        client={clientToEdit}
+        onSuccess={fetchDashboardData}
+        onDelete={fetchDashboardData}
       />
     </div>
   );

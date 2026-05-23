@@ -47,9 +47,20 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
         <div className="p-5 space-y-6 overflow-y-auto flex-1">
           {/* Status & Date Row */}
           <div className="flex items-center justify-between">
-             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(transaction.status)}`}>
-                {transaction.status}
-              </span>
+             <div className="flex items-center gap-2 flex-wrap">
+               <div className='flex items-center gap-1.5'>
+                <p className='text-[12px] font-bold text-gray-400'>Payment Status: </p>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800">
+                  {transaction.paymentStatus || 'Pending'}
+                </span>
+               </div>
+              <div className='flex items-center gap-1.5'>
+                <p className='text-[12px] font-bold text-gray-400'>Work Status: </p>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(transaction.status)}`}>
+                  {transaction.status}
+                </span>
+             </div>
+             </div>
               <div className="flex items-center gap-1.5 text-gray-500">
                 <Clock className="w-3.5 h-3.5" />
                 <span className="text-xs font-medium">{formatDate(transaction.date)}</span>
@@ -123,8 +134,12 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
                 <p className="text-xs font-bold mt-1">{transaction.paymentMode}</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold opacity-70 uppercase">Filing Status</p>
-                <p className="text-xs font-bold mt-1">Confirmed</p>
+                <p className="text-[10px] font-bold opacity-70 uppercase">Payment Status</p>
+                <p className="text-xs font-bold mt-1">{transaction.paymentStatus || 'Pending'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold opacity-70 uppercase">Work Status</p>
+                <p className="text-xs font-bold mt-1">{transaction.status}</p>
               </div>
             </div>
           </div>}

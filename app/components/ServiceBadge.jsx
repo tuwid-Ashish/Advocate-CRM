@@ -6,6 +6,7 @@ const SERVICE_COLORS = {
   PAN: 'bg-teal-100 text-teal-700 border-teal-200',
   ITR: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   DSC: 'bg-orange-100 text-orange-700 border-orange-200',
+  EXTRA_EXPENSE: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
 const DEFAULT_COLOR = 'bg-gray-100 text-gray-700 border-gray-200';

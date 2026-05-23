@@ -23,13 +23,14 @@ export async function PUT(
       notes,
       paymentAmount,
       paymentMode,
+      paymentStatus,
       status,
     } = body;
 
     // Verify record exists
     const existingRecord = await prisma.serviceRecord.findUnique({
       where: { id },
-      include: { payment: true },
+      include: { payment: true, extraExpenseRecord: true },
     });
 
     if (!existingRecord) {
@@ -38,6 +39,7 @@ export async function PUT(
 
     const numericPaymentAmount = Number(paymentAmount || 0);
     const recordStatus = status || existingRecord.status;
+    const recordPaymentStatus = paymentStatus || existingRecord.paymentStatus || (numericPaymentAmount > 0 ? 'PAID' : 'PENDING');
 
     // Update the main record
     const updatedRecord = await prisma.serviceRecord.update({
@@ -48,6 +50,7 @@ export async function PUT(
         details: details !== undefined ? details : existingRecord.details,
         notes: notes !== undefined ? notes : existingRecord.notes,
         status: recordStatus as any,
+        paymentStatus: recordPaymentStatus as any,
         completedDate: recordStatus === 'COMPLETED' ? new Date() : existingRecord.completedDate,
       },
     });
@@ -60,6 +63,7 @@ export async function PUT(
           data: {
             amount: numericPaymentAmount,
             mode: paymentMode || existingRecord.payment.mode,
+            status: recordPaymentStatus as any,
             receivedById: user.id,
           },
         });
@@ -69,7 +73,7 @@ export async function PUT(
             serviceRecordId: id,
             amount: numericPaymentAmount,
             mode: paymentMode || 'CASH',
-            status: 'COMPLETED',
+            status: recordPaymentStatus as any,
             receivedDate: new Date(),
             receivedById: user.id,
           },
@@ -144,6 +148,37 @@ export async function PUT(
              filingDate: details.filingDate ? new Date(details.filingDate) : null,
            },
          });
+      }
+
+      if (details.kind === 'EXTRA_EXPENSE' || serviceType === 'EXTRA_EXPENSE') {
+        const monthNumber = Number(details.monthNumber || 1);
+        const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+
+        await prisma.extraExpenseRecord.upsert({
+          where: { serviceRecordId: id },
+          create: {
+            serviceRecordId: id,
+            clientId: clientId || existingRecord.clientId,
+            expenseTitle: details.expenseTitle || details.title || 'Expense',
+            expenseCategory: details.expenseCategory || null,
+            month: months[monthNumber - 1] || 'JANUARY',
+            monthNumber,
+            year: Number(details.year || new Date().getFullYear()),
+            amount: Number(details.amount || numericPaymentAmount || 0),
+            expenseDate: details.expenseDate ? new Date(details.expenseDate) : null,
+            notes: notes !== undefined ? notes : existingRecord.notes,
+          },
+          update: {
+            expenseTitle: details.expenseTitle || details.title || 'Expense',
+            expenseCategory: details.expenseCategory || null,
+            month: months[monthNumber - 1] || 'JANUARY',
+            monthNumber,
+            year: Number(details.year || new Date().getFullYear()),
+            amount: Number(details.amount || numericPaymentAmount || 0),
+            expenseDate: details.expenseDate ? new Date(details.expenseDate) : null,
+            notes: notes !== undefined ? notes : existingRecord.notes,
+          },
+        });
       }
     }
 

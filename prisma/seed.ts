@@ -68,6 +68,15 @@ async function main() {
       }),
       prisma.service.create({
         data: {
+          code: 'EXTRA_EXPENSE',
+          name: 'Extra Expense',
+          category: 'RECURRING',
+          automationType: 'MANUAL',
+          dataFormat: 'DETAILED_RECORD',
+        },
+      }),
+      prisma.service.create({
+        data: {
           code: 'ITR',
           name: 'Income Tax Return',
           category: 'RECURRING',

@@ -10,6 +10,7 @@ const ONE_TIME_SERVICES = [
 
 const BUSINESS_SERVICES = [
   { value: 'GST', label: 'GST' },
+  { value: 'EXTRA_EXPENSE', label: 'Extra Expense' },
   { value: 'ITR', label: 'ITR' },
   { value: 'TDS', label: 'TDS' },
   { value: 'DSC', label: 'DSC' },
@@ -24,6 +25,12 @@ const PAYMENT_MODES = [
   { value: 'CASH', label: 'Cash' },
   { value: 'UPI', label: 'UPI' },
   { value: 'CREDIT', label: 'Credit' },
+];
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'Payment Pending' },
+  { value: 'PARTIAL', label: 'Payment Partial' },
+  { value: 'PAID', label: 'Payment Paid' },
 ];
 
 const STATUS_OPTIONS = [
@@ -46,14 +53,20 @@ const INITIAL_FORM = {
   customerName: '',
   customerPhone: '',
   customerEmail: '',
+  customerReference: '',
   detailX: '',
   detailY: '',
   partyName: '',
+  expenseTitle: '',
+  expenseCategory: '',
+  expenseMonth: String(new Date().getMonth() + 1),
+  expenseYear: String(new Date().getFullYear()),
   gstMonth: String(new Date().getMonth() + 1),
   gstYear: String(new Date().getFullYear()),
   filingDate: '',
   paymentAmount: '',
   paymentMode: 'CASH',
+  paymentStatus: 'PENDING',
   status: 'PENDING',
   notes: '',
 };
@@ -88,12 +101,21 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
         partyName: selectedClient?.businessName || ''
       }));
     } else if (name === 'businessService') {
-      // Reset partyName if switching away from GST
+      // Reset service-specific fields when switching record type
       const newFormData = { ...formData, [name]: value };
       if (value !== 'GST') {
         newFormData.partyName = '';
       }
       setFormData(newFormData);
+    } else if (name === 'paymentAmount') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        paymentStatus:
+          value && Number(value) > 0 && prev.paymentStatus === 'PENDING'
+            ? 'PAID'
+            : prev.paymentStatus,
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -134,6 +156,7 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
       clientId,
       paymentAmount,
       paymentMode: formData.paymentMode,
+      paymentStatus: formData.paymentStatus,
       status: formData.status,
       notes: formData.notes.trim(),
     };
@@ -167,6 +190,23 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
       };
     }
 
+    if (formData.businessService === 'EXTRA_EXPENSE') {
+      const monthNumber = Number(formData.expenseMonth);
+      return {
+        ...base,
+        serviceType: 'EXTRA_EXPENSE',
+        details: {
+          kind: 'EXTRA_EXPENSE',
+          expenseTitle: formData.expenseTitle.trim(),
+          expenseCategory: formData.expenseCategory.trim(),
+          month: MONTHS[monthNumber - 1],
+          monthNumber,
+          year: Number(formData.expenseYear),
+          amount: paymentAmount,
+        },
+      };
+    }
+
     return {
       ...base,
       serviceType: formData.businessService,
@@ -187,6 +227,11 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
     if (!formData.clientId) return 'Please select a business client';
     if (formData.businessService === 'GST') {
       if (!formData.partyName.trim()) return 'Party name is required for GST';
+      return '';
+    }
+    if (formData.businessService === 'EXTRA_EXPENSE') {
+      if (!formData.expenseTitle.trim()) return 'Expense title is required';
+      if (!formData.paymentAmount || Number(formData.paymentAmount) <= 0) return 'Expense amount is required';
       return '';
     }
     if (!formData.detailX.trim()) return 'First detail is required';
@@ -221,6 +266,10 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
   }, [formData]);
 
   const previewText = useMemo(() => {
+    if (formData.businessService === 'EXTRA_EXPENSE' && formData.recordKind === 'BUSINESS') {
+      return `${formData.expenseTitle || 'Expense'}${formData.expenseCategory ? ` (${formData.expenseCategory})` : ''} Rs ${formData.paymentAmount || '0'} ${PAYMENT_MODES.find((mode) => mode.value === formData.paymentMode)?.label || 'Cash'}`;
+    }
+
     if (formData.businessService !== 'GST' && formData.recordKind === 'BUSINESS') {
       return `${formData.detailX || 'x'} from ${formData.detailY || 'y'} Rs ${formData.paymentAmount || '0'} ${PAYMENT_MODES.find((mode) => mode.value === formData.paymentMode)?.label || 'Cash'
         }`;
@@ -372,6 +421,14 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
                     {PAYMENT_MODES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                   <select
+                    name="paymentStatus"
+                    value={formData.paymentStatus}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                  >
+                    {PAYMENT_STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                  <select
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
@@ -477,6 +534,42 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
                             onChange={handleChange}
                             className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
                           />
+                        </div>
+                      ) : formData.businessService === 'EXTRA_EXPENSE' ? (
+                        <div className="space-y-4">
+                          <input
+                            type="text"
+                            name="expenseTitle"
+                            value={formData.expenseTitle}
+                            onChange={handleChange}
+                            placeholder="Expense Title *"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                          />
+                          <input
+                            type="text"
+                            name="expenseCategory"
+                            value={formData.expenseCategory}
+                            onChange={handleChange}
+                            placeholder="Category (e.g. Office, Travel)"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <select
+                              name="expenseMonth"
+                              value={formData.expenseMonth}
+                              onChange={handleChange}
+                              className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                            >
+                              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                            </select>
+                            <input
+                              type="number"
+                              name="expenseYear"
+                              value={formData.expenseYear}
+                              onChange={handleChange}
+                              className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                            />
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-4">

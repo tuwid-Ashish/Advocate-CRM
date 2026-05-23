@@ -42,6 +42,9 @@ export const TransactionTable = ({ transactions, onRowClick, onEdit }) => {
               <p>
                 <span className="font-medium text-gray-700">Mode:</span> {txn.paymentMode}
               </p>
+              <p>
+                <span className="font-medium text-gray-700">Payment:</span> {txn.paymentStatus}
+              </p>
               {txn.serviceDetail && (
                 <p className="col-span-2">
                   <span className="font-medium text-gray-700">Details:</span> {txn.serviceDetail}
@@ -64,7 +67,8 @@ export const TransactionTable = ({ transactions, onRowClick, onEdit }) => {
               <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Employee</th>
               <th className="px-6 py-2 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</th>
               <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mode</th>
-              <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Payment Status</th>
+              <th className="px-6 py-2 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Work Status</th>
               <th className="px-6 py-2 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Action</th>
             </tr>
           </thead>
@@ -89,6 +93,11 @@ export const TransactionTable = ({ transactions, onRowClick, onEdit }) => {
                 </td>
                 <td className="px-6 py-2 text-sm text-gray-500 dark:text-gray-400">
                   {txn.paymentMode}
+                </td>
+                <td className="px-6 py-2 min-w-[180px] whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800">
+                    {`PAYMENT ${txn.paymentStatus}`}
+                  </span>
                 </td>
                 <td className="px-6 py-2 text-sm">
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(txn.status)}`}>

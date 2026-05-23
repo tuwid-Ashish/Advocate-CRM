@@ -22,6 +22,7 @@ enum ServiceType {
   TAN
   GST_3B
   GST_1
+  EXTRA_EXPENSE
   ITR
   TDS
   DSC
@@ -52,6 +53,8 @@ enum PaymentMode {
 
 enum PaymentStatus {
   PENDING
+  PARTIAL
+  PAID
   COMPLETED
 }
 
@@ -134,6 +137,7 @@ model Client {
   serviceRecords ServiceRecord[]
   gstFilings     GSTFiling[]
   itrRecords     ITRRecord[]
+  extraExpenseRecords ExtraExpenseRecord[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -166,6 +170,7 @@ model ServiceRecord {
   clientId       String
   client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   status         RecordStatus  @default(PENDING)
+  paymentStatus  PaymentStatus @default(PENDING)
   
   // Service-specific details stored as JSON
   details        Json?
@@ -191,6 +196,7 @@ model ServiceRecord {
   itrRecord      ITRRecord?
   oneTimeDetail  OneTimeServiceDetail?
   simpleDetail   SimpleBusinessServiceDetail?
+  extraExpenseRecord ExtraExpenseRecord?
 
   @@index([serviceType])
   @@index([clientId])
@@ -284,6 +290,30 @@ model GSTFiling {
   @@index([year, monthNumber])
   @@index([gstNumber])
   @@index([filingStatus])
+}
+
+model ExtraExpenseRecord {
+  id              String        @id @default(cuid())
+  serviceRecordId String        @unique
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  clientId        String
+  client          Client        @relation(fields: [clientId], references: [id])
+
+  expenseTitle    String
+  expenseCategory String?
+  month           String
+  monthNumber     Int
+  year            Int
+  amount          Float
+  expenseDate     DateTime?
+  notes           String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([year, monthNumber])
 }
 
 model ITRRecord {

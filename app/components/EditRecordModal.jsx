@@ -23,6 +23,12 @@ const PAYMENT_MODES = [
   { value: 'CREDIT', label: 'Credit' },
 ];
 
+const PAYMENT_STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'Payment Pending' },
+  { value: 'PARTIAL', label: 'Payment Partial' },
+  { value: 'PAID', label: 'Payment Paid' },
+];
+
 const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Pending' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
@@ -60,13 +66,14 @@ export const EditRecordModal = ({
 
   const detailsKind = useMemo(() => {
     if (!record) return null;
-    return record.record.details?.kind || (['PAN', 'TAN'].includes(record.record.serviceType) ? 'ONE_TIME' : 'BUSINESS');
+    return record.record.details?.kind || (['PAN', 'TAN'].includes(record.record.serviceType) ? 'ONE_TIME' : record.record.serviceType === 'EXTRA_EXPENSE' ? 'EXTRA_EXPENSE' : 'BUSINESS');
   }, [record]);
 
   useEffect(() => {
     if (record && isOpen) {
       const details = record.record.details || {};
       const payment = record.record.payment || {};
+      const paymentStatus = record.record.paymentStatus || payment.status || 'PENDING';
 
       setFormData({
         id: record.id,
@@ -79,8 +86,13 @@ export const EditRecordModal = ({
         gstYear: String(details.year || new Date().getFullYear()),
         detailX: details.x || '',
         detailY: details.y || '',
+        expenseTitle: details.expenseTitle || '',
+        expenseCategory: details.expenseCategory || '',
+        expenseMonth: String(details.monthNumber || new Date().getMonth() + 1),
+        expenseYear: String(details.year || new Date().getFullYear()),
         paymentAmount: String(payment.amount || 0),
         paymentMode: payment.mode || 'CASH',
+        paymentStatus: paymentStatus === 'COMPLETED' ? 'PAID' : paymentStatus,
         status: record.record.status,
         notes: record.record.notes || '',
       });
@@ -93,6 +105,9 @@ export const EditRecordModal = ({
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      ...(name === 'paymentAmount' && value && Number(value) > 0 && prev.paymentStatus === 'PENDING'
+        ? { paymentStatus: 'PAID' }
+        : {}),
     }));
   };
 
@@ -125,6 +140,17 @@ export const EditRecordModal = ({
           monthNumber: Number(formData.gstMonth),
           year: Number(formData.gstYear),
         };
+      } else if (detailsKind === 'EXTRA_EXPENSE' || record?.record?.serviceType === 'EXTRA_EXPENSE') {
+        details = {
+          ...record?.record?.details,
+          kind: 'EXTRA_EXPENSE',
+          expenseTitle: formData.expenseTitle,
+          expenseCategory: formData.expenseCategory,
+          month: MONTHS[Number(formData.expenseMonth) - 1],
+          monthNumber: Number(formData.expenseMonth),
+          year: Number(formData.expenseYear),
+          amount: paymentAmount,
+        };
       } else {
         // Fallback for SIMPLE_BUSINESS or other types
         details = {
@@ -140,6 +166,7 @@ export const EditRecordModal = ({
         notes: formData.notes,
         paymentAmount,
         paymentMode: formData.paymentMode,
+        paymentStatus: formData.paymentStatus,
         status: formData.status,
       };
 
@@ -385,7 +412,15 @@ export const EditRecordModal = ({
                     />
 
                     <SelectField
-                      label="Status"
+                      label="Payment Status"
+                      name="paymentStatus"
+                      value={formData.paymentStatus}
+                      onChange={handleChange}
+                      options={PAYMENT_STATUS_OPTIONS}
+                    />
+
+                    <SelectField
+                      label="Work Status"
                       name="status"
                       value={formData.status}
                       onChange={handleChange}
@@ -397,76 +432,139 @@ export const EditRecordModal = ({
               </section>
 
               {/* Service Details conditionally rendered */}
-              {detailsKind === 'GST' || ['GST_3B', 'GST_1'].includes(record?.record?.serviceType) ? (
-                <section className="bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center gap-2 mb-5">
-                    <Calendar className="w-4 h-4 text-violet-500" />
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      GST Details
-                    </h3>
-                  </div>
+              {(() => {
+                if (detailsKind === 'GST' || ['GST_3B', 'GST_1'].includes(record?.record?.serviceType)) {
+                  return (
+                    <section className="bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
+                      <div className="flex items-center gap-2 mb-5">
+                        <Calendar className="w-4 h-4 text-violet-500" />
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          GST Details
+                        </h3>
+                      </div>
 
-                  <div className="space-y-4">
-                    <InputField
-                      label="Party Name"
-                      icon={Briefcase}
-                      placeholder="Party Name"
-                      name="partyName"
-                      value={formData.partyName || clients.find(c => c.id === record?.record?.clientId)?.businessName || ''}
-                      onChange={handleChange}
-                      disabled={true}
-                    />
+                      <div className="space-y-4">
+                        <InputField
+                          label="Party Name"
+                          icon={Briefcase}
+                          placeholder="Party Name"
+                          name="partyName"
+                          value={formData.partyName || clients.find(c => c.id === record?.record?.clientId)?.businessName || ''}
+                          onChange={handleChange}
+                          disabled={true}
+                        />
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <SelectField
-                        label="Month"
-                        name="gstMonth"
-                        value={formData.gstMonth}
-                        onChange={handleChange}
-                        options={MONTHS.map((m, i) => ({
-                          value: String(i + 1),
-                          label: m,
-                        }))}
-                      />
+                        <div className="grid grid-cols-2 gap-4">
+                          <SelectField
+                            label="Month"
+                            name="gstMonth"
+                            value={formData.gstMonth}
+                            onChange={handleChange}
+                            options={MONTHS.map((m, i) => ({
+                              value: String(i + 1),
+                              label: m,
+                            }))}
+                          />
 
-                      <InputField
-                        label="Year"
-                        icon={Hash}
-                        placeholder="Year"
-                        name="gstYear"
-                        value={formData.gstYear}
-                        onChange={handleChange}
-                      />
-                    </div>
-                  </div>
-                </section>
-              ) : detailsKind !== 'ONE_TIME' ? (
-                <section className="bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center gap-2 mb-5">
-                    <Briefcase className="w-4 h-4 text-violet-500" />
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      Service Details
-                    </h3>
-                  </div>
+                          <InputField
+                            label="Year"
+                            icon={Hash}
+                            placeholder="Year"
+                            name="gstYear"
+                            value={formData.gstYear}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+                    </section>
+                  );
+                }
 
-                  <div className="space-y-4">
-                    <InputField
-                      icon={Info}
-                      placeholder="Detail X"
-                      name="detailX"
-                      value={formData.detailX}
-                      onChange={handleChange}
-                    />
-                    <InputField
-                      icon={Info}
-                      placeholder="Detail Y"
-                      name="detailY"
-                      value={formData.detailY}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </section>
-              ) : null}
+                if (detailsKind === 'EXTRA_EXPENSE' || record?.record?.serviceType === 'EXTRA_EXPENSE') {
+                  return (
+                    <section className="bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
+                      <div className="flex items-center gap-2 mb-5">
+                        <Briefcase className="w-4 h-4 text-rose-500" />
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          Extra Expense Details
+                        </h3>
+                      </div>
+
+                      <div className="space-y-4">
+                        <InputField
+                          icon={StickyNote}
+                          placeholder="Expense Title"
+                          name="expenseTitle"
+                          value={formData.expenseTitle}
+                          onChange={handleChange}
+                        />
+
+                        <InputField
+                          icon={Info}
+                          placeholder="Category"
+                          name="expenseCategory"
+                          value={formData.expenseCategory}
+                          onChange={handleChange}
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <SelectField
+                            label="Month"
+                            name="expenseMonth"
+                            value={formData.expenseMonth}
+                            onChange={handleChange}
+                            options={MONTHS.map((m, i) => ({
+                              value: String(i + 1),
+                              label: m,
+                            }))}
+                          />
+
+                          <InputField
+                            label="Year"
+                            icon={Hash}
+                            placeholder="Year"
+                            name="expenseYear"
+                            value={formData.expenseYear}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (detailsKind !== 'ONE_TIME') {
+                  return (
+                    <section className="bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
+                      <div className="flex items-center gap-2 mb-5">
+                        <Briefcase className="w-4 h-4 text-violet-500" />
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          Service Details
+                        </h3>
+                      </div>
+
+                      <div className="space-y-4">
+                        <InputField
+                          icon={Info}
+                          placeholder="Detail X"
+                          name="detailX"
+                          value={formData.detailX}
+                          onChange={handleChange}
+                        />
+                        <InputField
+                          icon={Info}
+                          placeholder="Detail Y"
+                          name="detailY"
+                          value={formData.detailY}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    </section>
+                  );
+                }
+
+                return null;
+              })()}
 
               {/* Preview */}
               <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/30 p-5">

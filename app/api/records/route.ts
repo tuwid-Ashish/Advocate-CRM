@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
           itrRecord: true,
           oneTimeDetail: true,
           simpleDetail: true,
+          extraExpenseRecord: true,
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
       notes,
       paymentAmount,
       paymentMode,
+      paymentStatus,
       status,
     } = body;
 
@@ -127,7 +129,9 @@ export async function POST(request: NextRequest) {
 
     const numericPaymentAmount = Number(paymentAmount || 0);
     const recordStatus = status || 'PENDING';
+    const recordPaymentStatus = paymentStatus || (numericPaymentAmount > 0 ? 'PAID' : 'PENDING');
     const isGstRecord = serviceType === 'GST_3B' || serviceType === 'GST_1';
+    const isExtraExpenseRecord = serviceType === 'EXTRA_EXPENSE' || details?.kind === 'EXTRA_EXPENSE';
 
     const createdRecord = await prisma.serviceRecord.create({
       data: {
@@ -137,6 +141,7 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         createdById: user.id,
         status: recordStatus as any,
+        paymentStatus: recordPaymentStatus as any,
         completedDate: recordStatus === 'COMPLETED' ? new Date() : null,
         payment:
           numericPaymentAmount > 0
@@ -144,7 +149,7 @@ export async function POST(request: NextRequest) {
                 create: {
                   amount: numericPaymentAmount,
                   mode: paymentMode || 'CASH',
-                  status: 'COMPLETED',
+                  status: recordPaymentStatus as any,
                   receivedDate: new Date(),
                   receivedById: user.id,
                 },
@@ -166,6 +171,23 @@ export async function POST(request: NextRequest) {
           year: Number(details.year),
           filingStatus: details.filingDate ? 'FILED' : 'PENDING',
           filingDate: details.filingDate ? new Date(details.filingDate) : null,
+        },
+      });
+    }
+
+    if (isExtraExpenseRecord && details) {
+      await prisma.extraExpenseRecord.create({
+        data: {
+          serviceRecordId: createdRecord.id,
+          clientId,
+          expenseTitle: details.expenseTitle || details.title || 'Expense',
+          expenseCategory: details.expenseCategory || null,
+          month: details.month?.toUpperCase() || '',
+          monthNumber: Number(details.monthNumber),
+          year: Number(details.year),
+          amount: Number(details.amount || numericPaymentAmount || 0),
+          expenseDate: details.expenseDate ? new Date(details.expenseDate) : null,
+          notes: notes || null,
         },
       });
     }
@@ -208,6 +230,7 @@ export async function POST(request: NextRequest) {
         itrRecord: true,
         oneTimeDetail: true,
         simpleDetail: true,
+        extraExpenseRecord: true,
       },
     });
 
