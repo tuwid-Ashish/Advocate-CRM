@@ -141,9 +141,9 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
 
     const lower = errorMessage.toLowerCase();
 
-    if (lower.includes('reference') && lower.includes('must not be null')) {
-      return 'Reference is required for one-time records.';
-    }
+    // if (lower.includes('reference') && lower.includes('must not be null')) {
+    //   return 'Reference is required for one-time records.';
+    // }
 
     if (lower.includes('missing required fields')) {
       return 'Please fill all required fields before submitting.';
@@ -244,7 +244,7 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
     if (formData.recordKind === 'ONE_TIME') {
       if (!formData.customerName.trim()) return 'Customer name is required';
       if (!formData.customerEmail.trim()) return 'Customer email is required';
-      if (!formData.customerReference.trim()) return 'Reference is required';
+      // if (!formData.customerReference.trim()) return 'Reference is required';
       return '';
     }
     if (!formData.clientId) return 'Please select a business client';
