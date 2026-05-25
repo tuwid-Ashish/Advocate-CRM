@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Trash2 } from 'lucide-react';
 
 const INITIAL_FORM = {
@@ -45,11 +46,22 @@ const buildInitialForm = (client) => {
   };
 };
 
-export const EditClientModal = ({ isOpen, onClose, token, onSuccess, client, onDelete }) => {
+export const EditClientModal = ({ isOpen, onClose, onSuccess, client, onDelete }) => {
+  const router = useRouter();
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  const handleUnauthorized = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      router.push('/login');
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -121,10 +133,14 @@ export const EditClientModal = ({ isOpen, onClose, token, onSuccess, client, onD
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       const data = await response.json();
       if (!response.ok) {
@@ -155,10 +171,12 @@ export const EditClientModal = ({ isOpen, onClose, token, onSuccess, client, onD
     try {
       const response = await fetch(`/api/clients/${client.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       const data = await response.json().catch(() => null);
       if (!response.ok) {

@@ -8,9 +8,9 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, comparePassword, createSessionResponse } from '@/lib/auth';
+import { hashPassword, createSessionResponse } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/middleware';
 
 
@@ -58,14 +58,23 @@ export async function POST(request: NextRequest) {
 
     // Create session
     const session = createSessionResponse(employee);
-
-    return successResponse(
+    const response = successResponse(
       {
         message: 'Employee registered successfully',
         ...session,
       },
       201
     );
+
+    response.cookies.set('token', session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Registration error:', error);
     return errorResponse('Registration failed', 500);

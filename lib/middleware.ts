@@ -20,7 +20,9 @@ export interface AuthenticatedRequest extends NextRequest {
  */
 export function authenticateRequest(request: NextRequest): AuthenticatedRequest {
   const authHeader = request.headers.get('authorization');
-  const token = getTokenFromHeader(authHeader);
+  const headerToken = getTokenFromHeader(authHeader);
+  const cookieToken = request.cookies.get('token')?.value;
+  const token = headerToken || cookieToken;
 
   if (!token) {
     throw new Error('No authentication token provided');

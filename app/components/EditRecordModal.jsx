@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   X,
   Save,
@@ -57,13 +58,23 @@ export const EditRecordModal = ({
   onClose,
   record,
   clients = [],
-  token,
   onSuccess,
 }) => {
+  const router = useRouter();
   const [formData, setFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  const handleUnauthorized = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      router.push('/login');
+    }
+  };
 
   const detailsKind = useMemo(() => {
     if (!record) return null;
@@ -175,10 +186,14 @@ export const EditRecordModal = ({
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
@@ -206,10 +221,12 @@ export const EditRecordModal = ({
     try {
       const response = await fetch(`/api/records/${formData.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Failed to delete record');

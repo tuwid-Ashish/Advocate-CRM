@@ -64,6 +64,7 @@ export function createSessionResponse(user: any) {
     email: user.email,
     role: user.role,
   });
+  
 
   return {
     token,

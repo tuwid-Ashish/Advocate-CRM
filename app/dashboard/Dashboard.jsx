@@ -239,11 +239,11 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
-  const [token, setToken] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState('light');
   const [isBooting, setIsBooting] = useState(true);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -275,37 +275,51 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
     employeeId: '',
   });
 
-  // Boot: load user from localStorage
-  useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    const tokenStr = localStorage.getItem('token');
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    const savedSidebar = localStorage.getItem('sidebarCollapsed') === 'true';
-
-    setTheme(savedTheme);
-    setIsSidebarCollapsed(savedSidebar);
-    if (savedTheme === 'dark') document.documentElement.classList.add('dark');
-
-    if (!userStr || !tokenStr) {
-      router.push('/login');
-      return;
-    }
-
+  const logoutAndRedirect = useCallback(async () => {
     try {
-      const user = JSON.parse(userStr);
-      setUserRole(user.role?.toLowerCase() || '');
-      setUserName(user.name || 'User');
-      setToken(tokenStr);
-    } catch (e) {
-      console.error('Failed to parse user from localStorage', e);
-      router.push('/login');
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout failed:', err);
     } finally {
-      setIsBooting(false);
+      router.push('/login');
     }
   }, [router]);
 
+  // Boot: load user from cookie session
+  useEffect(() => {
+    const loadSession = async () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      const savedSidebar = localStorage.getItem('sidebarCollapsed') === 'true';
+
+      setTheme(savedTheme);
+      setIsSidebarCollapsed(savedSidebar);
+      if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+
+      try {
+        const response = await fetch('/api/auth/me');
+        if (!response.ok) {
+          await logoutAndRedirect();
+          return;
+        }
+
+        const data = await response.json();
+        const user = data.user || {};
+        setUserRole(user.role?.toLowerCase() || '');
+        setUserName(user.name || 'User');
+        setIsSessionReady(true);
+      } catch (e) {
+        console.error('Failed to load session', e);
+        await logoutAndRedirect();
+      } finally {
+        setIsBooting(false);
+      }
+    };
+
+    loadSession();
+  }, [logoutAndRedirect]);
+
   const fetchDashboardData = useCallback(async () => {
-    if (!token) return;
+    if (!isSessionReady) return;
 
     setIsLoading(true);
     setError('');
@@ -319,34 +333,27 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
       const fetchRecordPage = (skip) => {
         const pageParams = new URLSearchParams(recordParams);
         pageParams.set('skip', String(skip));
-        return fetch(`/api/records?${pageParams.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        return fetch(`/api/records?${pageParams.toString()}`);
       };
 
       const requests = [
-        fetch('/api/clients', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        fetch('/api/clients'),
       ];
 
       // If user is admin, fetch employees for filtering
       let fetchEmployees = false;
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user.role?.toLowerCase() === 'admin') {
-          fetchEmployees = true;
-          requests.push(
-            fetch('/api/employees', {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-          );
-        }
+      if (userRole === 'admin') {
+        fetchEmployees = true;
+        requests.push(fetch('/api/employees'));
       }
 
       const firstRecordResponse = await fetchRecordPage(0);
       const responses = await Promise.all(requests);
+
+      if (firstRecordResponse.status === 401 || responses.some(r => r.status === 401)) {
+        await logoutAndRedirect();
+        return;
+      }
 
       if (!firstRecordResponse.ok) throw new Error('Failed to fetch service records');
       if (!responses[0].ok) throw new Error('Failed to fetch clients');
@@ -362,6 +369,10 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
       );
 
       for (const response of remainingRecordResponses) {
+        if (response.status === 401) {
+          await logoutAndRedirect();
+          return;
+        }
         if (!response.ok) throw new Error('Failed to fetch service records');
       }
 
@@ -387,12 +398,12 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [isSessionReady, logoutAndRedirect]);
 
   useEffect(() => {
-    if (!token || isBooting) return;
+    if (!isSessionReady || isBooting) return;
     fetchDashboardData();
-  }, [token, isBooting, fetchDashboardData]);
+  }, [isSessionReady, isBooting, fetchDashboardData]);
 
   // All transactions (unfiltered) — used for dashboard KPIs & charts
   const allTransactions = useMemo(() => records.map(mapRecordToTransaction), [records]);
@@ -581,9 +592,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    router.push('/login');
+    logoutAndRedirect();
   };
 
   const handleRefreshRecords = () => {
@@ -991,7 +1000,6 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         isOpen={isAddRecordModalOpen}
         onClose={() => setIsAddRecordModalOpen(false)}
         clients={clients}
-        token={token}
         onSuccess={fetchDashboardData}
       />
       <EditRecordModal
@@ -999,7 +1007,6 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         onClose={() => setIsEditRecordModalOpen(false)}
         record={recordToEdit}
         clients={clients}
-        token={token}
         onSuccess={fetchDashboardData}
       />
 
@@ -1008,7 +1015,6 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         onClose={() => {
           setIsAddClientModalOpen(false);
         }}
-        token={token}
         onSuccess={fetchDashboardData}
       />
       <EditClientModal
@@ -1017,7 +1023,6 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
           setIsEditClientModalOpen(false);
           setClientToEdit(null);
         }}
-        token={token}
         client={clientToEdit}
         onSuccess={fetchDashboardData}
         onDelete={fetchDashboardData}

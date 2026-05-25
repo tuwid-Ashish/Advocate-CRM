@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
 const INITIAL_FORM = {
@@ -45,10 +46,21 @@ const buildInitialForm = (client) => {
   };
 };
 
-export const AddClientModal = ({ isOpen, onClose, token, onSuccess, client = null, mode = 'create' }) => {
+export const AddClientModal = ({ isOpen, onClose, onSuccess, client = null, mode = 'create' }) => {
+  const router = useRouter();
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleUnauthorized = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      router.push('/login');
+    }
+  };
 
   const isEditing = mode === 'edit' && Boolean(client?.id);
 
@@ -116,10 +128,14 @@ export const AddClientModal = ({ isOpen, onClose, token, onSuccess, client = nul
         method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       const data = await response.json();
 

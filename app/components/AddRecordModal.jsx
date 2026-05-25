@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Plus, Info, Hash, Phone, Mail, User, Briefcase, Calendar, CreditCard, StickyNote, AlertCircle } from 'lucide-react';
 
 const ONE_TIME_SERVICES = [
@@ -72,10 +73,21 @@ const INITIAL_FORM = {
   notes: '',
 };
 
-export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) => {
+export const AddRecordModal = ({ isOpen, onClose, clients, onSuccess }) => {
+  const router = useRouter();
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleUnauthorized = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      router.push('/login');
+    }
+  };
 
   const businessClients = useMemo(
     () => clients.filter((client) => client.type === 'BUSINESS_CLIENT'),
@@ -127,10 +139,13 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
+    if (response.status === 401) {
+      await handleUnauthorized();
+      return;
+    }
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Request failed');
     return data;

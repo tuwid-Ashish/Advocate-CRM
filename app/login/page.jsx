@@ -13,11 +13,18 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if already logged in
-    const token = localStorage.getItem('token');
-    if (token) {
-      router.push('/dashboard');
-    }
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          router.push('/dashboard');
+        }
+      } catch (err) {
+        console.error('Session check failed:', err);
+      }
+    };
+
+    checkSession();
   }, [router]);
 
   const handleSubmit = async (e) => {
@@ -40,10 +47,6 @@ export default function LoginPage() {
         setError(data.error || 'Login failed');
         return;
       }
-
-      // Save token and user info
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
 
       // Redirect to dashboard
       router.push('/dashboard');
