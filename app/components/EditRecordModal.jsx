@@ -27,6 +27,7 @@ const PAYMENT_STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Payment Pending' },
   { value: 'PARTIAL', label: 'Payment Partial' },
   { value: 'PAID', label: 'Payment Paid' },
+  { value: 'RECEIVED', label: 'Payment Received' },
 ];
 
 const STATUS_OPTIONS = [

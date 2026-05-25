@@ -13,7 +13,7 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateRequest, errorResponse, successResponse } from '@/lib/middleware';
+import { authenticateRequest, errorResponse, errorResponseFromException, successResponse } from '@/lib/middleware';
 
 
 /**
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Get records error:', error);
-    return errorResponse(error.message || 'Failed to fetch records', 500);
+    return errorResponseFromException(error, 'Failed to fetch records', 500);
   }
 }
 
@@ -243,6 +243,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('Create record error:', error);
-    return errorResponse(error.message || 'Failed to create record', 500);
+    return errorResponseFromException(error, 'Failed to create record', 500);
   }
 }

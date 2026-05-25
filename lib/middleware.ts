@@ -54,6 +54,29 @@ export function errorResponse(message: string, status: number = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function isPrismaError(error: any): boolean {
+  if (!error) return false;
+  if (typeof error.name === 'string' && error.name.startsWith('Prisma')) return true;
+  if (typeof error.message === 'string' && error.message.includes('prisma.')) return true;
+  if (typeof error.message === 'string' && error.message.includes('Invalid `prisma')) return true;
+  return false;
+}
+
+export function sanitizeErrorMessage(error: any, fallback: string): string {
+  if (isPrismaError(error)) return fallback;
+  if (typeof error?.message === 'string' && error.message.trim()) return error.message;
+  if (typeof error === 'string' && error.trim()) return error;
+  return fallback;
+}
+
+export function errorResponseFromException(
+  error: any,
+  fallback: string,
+  status: number = 500
+) {
+  return errorResponse(sanitizeErrorMessage(error, fallback), status);
+}
+
 /**
  * Helper to create success response
  */
@@ -82,7 +105,7 @@ export function withAuth(
       if (error.message.includes('token')) {
         return errorResponse('Unauthorized', 401);
       }
-      return errorResponse(error.message || 'Internal server error', 500);
+      return errorResponseFromException(error, 'Internal server error', 500);
     }
   };
 }

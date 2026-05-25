@@ -55,6 +55,7 @@ enum PaymentStatus {
   PENDING
   PARTIAL
   PAID
+  RECEIVED
   COMPLETED
 }
 
@@ -213,7 +214,7 @@ model OneTimeServiceDetail {
   customerName    String
   phone           String?
   email           String
-  reference       String
+  reference       String?
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

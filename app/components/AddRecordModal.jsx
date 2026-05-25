@@ -30,7 +30,8 @@ const PAYMENT_MODES = [
 const PAYMENT_STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Payment Pending' },
   { value: 'PARTIAL', label: 'Payment Partial' },
-  { value: 'PAID', label: 'Payment Paid' },
+  { value: 'PAID',    label: 'Payment Paid'    },
+  { value: 'RECEIVED',label: 'Payment Received'},
 ];
 
 const STATUS_OPTIONS = [
@@ -135,6 +136,26 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
     return data;
   };
 
+  const getFriendlyErrorMessage = (errorMessage) => {
+    if (!errorMessage) return 'Something went wrong. Please try again.';
+
+    const lower = errorMessage.toLowerCase();
+
+    if (lower.includes('reference') && lower.includes('must not be null')) {
+      return 'Reference is required for one-time records.';
+    }
+
+    if (lower.includes('missing required fields')) {
+      return 'Please fill all required fields before submitting.';
+    }
+
+    if (lower.includes('client not found')) {
+      return 'Selected client could not be found. Please reselect and try again.';
+    }
+
+    return 'Unable to create the record. Please check the form and try again.';
+  };
+
   const createOneTimeClient = async () => {
     const existingClient = clients.find(
       (client) => client.email?.toLowerCase() === formData.customerEmail.trim().toLowerCase()
@@ -170,6 +191,7 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
           customerName: formData.customerName.trim(),
           phone: formData.customerPhone.trim(),
           email: formData.customerEmail.trim(),
+          reference: formData.customerReference.trim(),
         },
       };
     }
@@ -222,6 +244,7 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
     if (formData.recordKind === 'ONE_TIME') {
       if (!formData.customerName.trim()) return 'Customer name is required';
       if (!formData.customerEmail.trim()) return 'Customer email is required';
+      if (!formData.customerReference.trim()) return 'Reference is required';
       return '';
     }
     if (!formData.clientId) return 'Please select a business client';
@@ -253,7 +276,7 @@ export const AddRecordModal = ({ isOpen, onClose, clients, token, onSuccess }) =
       await onSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to create record');
+      setError(getFriendlyErrorMessage(err?.message));
     } finally {
       setIsLoading(false);
     }
