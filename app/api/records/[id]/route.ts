@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateRequest, errorResponse, successResponse } from '@/lib/middleware';
+import { authenticateRequest, errorResponse, successResponse, errorResponseFromException } from '@/lib/middleware';
 
 /**
  * PUT /api/records/[id]
@@ -101,6 +101,7 @@ export async function PUT(
             customerName: details.customerName,
             phone: details.phone,
             email: details.email,
+            reference: details.reference,
           },
         });
       }
@@ -125,29 +126,37 @@ export async function PUT(
          const monthNumber = Number(details.monthNumber || 1);
          const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
          
-         await prisma.gSTFiling.upsert({
-           where: { id: id }, // This might be wrong if multiple filings, but usually it's 1-1 for now
-           // Actually GSTFiling uses its own id. We'll find by serviceRecordId
-           create: {
-             serviceRecordId: id,
-             clientId: clientId || existingRecord.clientId,
-             gstType: (serviceType || existingRecord.serviceType) as any,
-             partyName: details.partyName || '',
-             month: months[monthNumber - 1] || 'JANUARY',
-             monthNumber,
-             year: Number(details.year || new Date().getFullYear()),
-             filingStatus: details.filingDate ? 'FILED' : 'PENDING',
-             filingDate: details.filingDate ? new Date(details.filingDate) : null,
-           },
-           update: {
-             partyName: details.partyName,
-             month: months[monthNumber - 1],
-             monthNumber,
-             year: Number(details.year),
-             filingStatus: details.filingDate ? 'FILED' : 'PENDING',
-             filingDate: details.filingDate ? new Date(details.filingDate) : null,
-           },
-         });
+         // Find existing filing by serviceRecordId since GSTFiling.id is an independent PK
+         const existingGst = await prisma.gSTFiling.findFirst({ where: { serviceRecordId: id } });
+         if (existingGst) {
+           await prisma.gSTFiling.update({
+             where: { id: existingGst.id },
+             data: {
+               partyName: details.partyName,
+               month: months[monthNumber - 1],
+               monthNumber,
+               year: Number(details.year),
+               filingStatus: details.filingDate ? 'FILED' : 'PENDING',
+               filingDate: details.filingDate ? new Date(details.filingDate) : null,
+               clientId: clientId || existingRecord.clientId,
+               gstType: (serviceType || existingRecord.serviceType) as any,
+             },
+           });
+         } else {
+           await prisma.gSTFiling.create({
+             data: {
+               serviceRecordId: id,
+               clientId: clientId || existingRecord.clientId,
+               gstType: (serviceType || existingRecord.serviceType) as any,
+               partyName: details.partyName || '',
+               month: months[monthNumber - 1] || 'JANUARY',
+               monthNumber,
+               year: Number(details.year || new Date().getFullYear()),
+               filingStatus: details.filingDate ? 'FILED' : 'PENDING',
+               filingDate: details.filingDate ? new Date(details.filingDate) : null,
+             },
+           });
+         }
       }
 
       if (details.kind === 'EXTRA_EXPENSE' || serviceType === 'EXTRA_EXPENSE') {
@@ -188,7 +197,7 @@ export async function PUT(
     });
   } catch (error: any) {
     console.error('Update record error:', error);
-    return errorResponse(error.message || 'Failed to update record', 500);
+    return errorResponseFromException(error, 'Failed to update record', 500);
   }
 }
 
@@ -213,6 +222,6 @@ export async function DELETE(
     });
   } catch (error: any) {
     console.error('Delete record error:', error);
-    return errorResponse(error.message || 'Failed to delete record', 500);
+    return errorResponseFromException(error, 'Failed to delete record', 500);
   }
 }
