@@ -120,7 +120,7 @@ export const TransactionModal = ({ transaction, onClose, onEdit }) => {
           )}
 
           {/* Financials Box */}
-         { itrFields.length == 0 &&  <div className="bg-blue-600 rounded-xl p-5 text-white shadow-lg shadow-blue-200">
+         { itrFields.length !== 0 &&  <div className="bg-blue-600 rounded-xl p-5 text-white shadow-lg shadow-blue-200">
             <div className="flex items-center justify-between opacity-80 mb-1">
               <p className="text-[10px] font-bold uppercase tracking-widest">Total Amount</p>
               <CreditCard className="w-4 h-4" />

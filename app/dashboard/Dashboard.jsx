@@ -76,7 +76,7 @@ function buildServiceDetail(record) {
   const amount = Number(payment.amount || 0);
   const mode = PAYMENT_LABELS[payment.mode] || payment.mode || 'Cash';
 
-  if (record.simpleDetail) {
+  if (record.simpleDetail && record.serviceType !== 'ITR') {
     return `${record.simpleDetail.x || 'x'} from ${record.simpleDetail.y || 'y'} Rs ${amount} ${mode}`;
   }
 
