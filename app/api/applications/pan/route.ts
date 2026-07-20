@@ -1,10 +1,8 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { startOfDay, endOfDay } from 'date-fns';
 
-const prisma = new PrismaClient();
-
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
@@ -27,7 +25,6 @@ export async function GET(request) {
 
     const stats = {
       today: todayStats,
-      // other stats can be added here
     };
 
     return NextResponse.json({ records, stats });

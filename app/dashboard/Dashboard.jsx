@@ -239,35 +239,23 @@ function buildExportRows(transactions) {
   });
 }
 
-export const Dashboard = ({ initialTab = 'dashboard' }) => {
+export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  // Derive activeTab from URL: ?tab=records  (falls back to initialTab)
-  const urlTab = searchParams.get('tab');
-  const [activeTab, setActiveTabState] = useState(urlTab || initialTab);
+  const [activeTab, setActiveTabState] = useState(initialTab);
 
-  // Sync activeTab → URL without adding a history entry for filter-only changes
+  // setActiveTab may be overridden externally (by DashboardWithUrlSync) to also
+  // update the URL. Otherwise it just updates local state.
   const setActiveTab = useCallback((tab, addHistory = true) => {
     setActiveTabState(tab);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tab);
-    const newUrl = `${pathname}?${params.toString()}`;
-    if (addHistory) {
-      router.push(newUrl, { scroll: false });
-    } else {
-      router.replace(newUrl, { scroll: false });
-    }
-  }, [pathname, router, searchParams]);
+    if (onTabChange) onTabChange(tab, addHistory);
+  }, [onTabChange]);
 
-  // Keep activeTab in sync if the user uses the browser back/forward buttons
+  // Keep local state in sync when initialTab prop changes (browser back/forward
+  // handled by the parent DashboardWithUrlSync updating this prop).
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && tab !== activeTab) {
-      setActiveTabState(tab);
-    }
-  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+    setActiveTabState(initialTab);
+  }, [initialTab]);
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -1169,3 +1157,48 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
     </div>
   );
 };
+
+/**
+ * DashboardWithUrlSync
+ *
+ * Thin wrapper that owns useSearchParams / usePathname so that the core
+ * Dashboard component never calls those hooks directly. This means only this
+ * wrapper needs to live inside a <Suspense> boundary — the pages provide that
+ * via the DashboardPage component.
+ *
+ * URL contract:  /dashboard?tab=records
+ *   - Tab changes  → router.push  (adds a history entry → back button works)
+ *   - Filter-only  → router.replace (no history entry)
+ */
+export function DashboardWithUrlSync({ initialTab = 'dashboard' }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Derive the active tab from the URL, falling back to the prop
+  const urlTab = searchParams.get('tab');
+  const [currentTab, setCurrentTab] = useState(urlTab || initialTab);
+
+  // When the URL changes (browser back / forward), sync local state
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && tab !== currentTab) {
+      setCurrentTab(tab);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Callback passed to Dashboard so it can update the URL on tab change
+  const handleTabChange = useCallback((tab, addHistory = true) => {
+    setCurrentTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    const newUrl = `${pathname}?${params.toString()}`;
+    if (addHistory) {
+      router.push(newUrl, { scroll: false });
+    } else {
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
+  return <Dashboard initialTab={currentTab} onTabChange={handleTabChange} />;
+}
