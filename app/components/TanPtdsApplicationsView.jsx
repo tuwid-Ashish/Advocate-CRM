@@ -211,6 +211,13 @@ export default function TanPtdsApplicationsView({ dateFilter = { startDate: '', 
                   <div className="text-base text-gray-900 dark:text-white">{selectedRecord.userId}</div>
                 </div>
 
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Payment Status</label>
+                  <div className="text-base font-semibold text-emerald-600 dark:text-emerald-400 font-medium">
+                    {selectedRecord.feesCharged > 0 ? 'PAID' : 'PENDING'}
+                  </div>
+                </div>
+
                 {selectedRecord.changesRequested && (
                   <div className="col-span-1 md:col-span-2">
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Changes Requested</label>

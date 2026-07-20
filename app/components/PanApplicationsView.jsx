@@ -192,6 +192,13 @@ export default function PanApplicationsView({ dateFilter = { startDate: '', endD
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Mode of Submission</label>
                   <div className="text-base text-gray-900 dark:text-white">{selectedRecord.modeOfSubmission || <span className="text-gray-400 italic">Not available</span>}</div>
                 </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">Payment Status</label>
+                  <div className="text-base font-semibold text-emerald-600 dark:text-emerald-400 font-medium">
+                    {selectedRecord.fee > 0 ? 'PAID' : 'PENDING'}
+                  </div>
+                </div>
               </div>
             </div>
             

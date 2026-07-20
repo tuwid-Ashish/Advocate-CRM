@@ -143,6 +143,12 @@ function buildServiceDetail(record) {
     return `${itrForm} | AY ${ay} | ${filingStatus}${datePart}${incomePart}${taxPart}`;
   }
 
+  if (record.serviceType === 'PAN' || record.serviceType === 'TAN') {
+    const ack = details.ackNo || details.acknowledgmentNo || details.couponNo;
+    const ackPart = ack ? `Ack: ${ack} | ` : '';
+    return `${ackPart}Rs ${amount} ${mode}`;
+  }
+
   return record.notes || '';
 }
 
