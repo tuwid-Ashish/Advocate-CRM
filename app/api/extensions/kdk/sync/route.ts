@@ -8,6 +8,26 @@ function mapFilingStatus(status: string | undefined | null) {
   return "IN_PROGRESS";
 }
 
+function parseDateSafe(dateString: string | undefined | null): Date | null {
+  if (!dateString) return null;
+
+  const text = String(dateString).trim();
+  const isoDate = new Date(text);
+  if (!Number.isNaN(isoDate.getTime())) return isoDate;
+
+  const separator = text.includes("/") ? "/" : text.includes("-") ? "-" : null;
+  if (!separator) return null;
+
+  const parts = text.split(separator);
+  if (parts.length !== 3) return null;
+
+  const [day, month, year] = parts.map((part) => Number(part));
+  if (!day || !month || !year) return null;
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // Add an endpoint to receive KDK sync data
 export async function POST(req: Request) {
   try {
@@ -26,8 +46,7 @@ export async function POST(req: Request) {
       let upsertCount = 0;
 
       for (const record of payload.records) {
-        const [day, month, year] = record.receiptDate.split('/');
-        const receiptDate = new Date(`${year}-${month}-${day}`);
+        const receiptDate = parseDateSafe(record.receiptDate) || new Date();
 
         await prisma.tanPtdsApplication.upsert({
           where: { acknowledgmentNo: record.acknowledgmentNo },
@@ -154,13 +173,7 @@ export async function POST(req: Request) {
     let syncCount = 0;
 
     function dateformating(dateString: string | undefined | null): Date | null {
-      const [day, month, year] = dateString.split("-");
-      const parsed = new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day)
-    );
-      return parsed;
+      return parseDateSafe(dateString);
     }
     // 2. Insert or update records (one per AY per client)
     for (const ret of returns) {
