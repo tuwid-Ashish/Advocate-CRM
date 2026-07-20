@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useHotkeys } from '@/app/hooks/useHotkeys';
 import { MetricCard } from '@/app/components/MetricCard';
 import { TransactionTable } from '@/app/components/TransactionTable';
@@ -22,6 +22,12 @@ import {
 import ApplicationsView from '@/app/components/ApplicationsView';
 import { Sidebar } from '@/app/components/Sidebar';
 import { formatCurrency, formatDateShort } from '@/lib/utils';
+import {
+  getCachedDashboardData,
+  setCachedDashboardData,
+  invalidateDashboardCache,
+  getCacheAgeSeconds,
+} from '@/lib/dashboardCache';
 import {
   Plus,
   Download,
@@ -235,8 +241,33 @@ function buildExportRows(transactions) {
 
 export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // Derive activeTab from URL: ?tab=records  (falls back to initialTab)
+  const urlTab = searchParams.get('tab');
+  const [activeTab, setActiveTabState] = useState(urlTab || initialTab);
+
+  // Sync activeTab → URL without adding a history entry for filter-only changes
+  const setActiveTab = useCallback((tab, addHistory = true) => {
+    setActiveTabState(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    const newUrl = `${pathname}?${params.toString()}`;
+    if (addHistory) {
+      router.push(newUrl, { scroll: false });
+    } else {
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
+  // Keep activeTab in sync if the user uses the browser back/forward buttons
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && tab !== activeTab) {
+      setActiveTabState(tab);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -245,7 +276,18 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
   const [isBooting, setIsBooting] = useState(true);
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
+  const [cacheAgeSeconds, setCacheAgeSeconds] = useState(null);
   const [error, setError] = useState('');
+
+  // Cache-age ticker — updates every 30 s so the UI stays accurate
+  useEffect(() => {
+    const id = setInterval(() => {
+      const age = getCacheAgeSeconds();
+      setCacheAgeSeconds(age);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const [records, setRecords] = useState([]);
   const [clients, setClients] = useState([]);
@@ -318,29 +360,43 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
     loadSession();
   }, [logoutAndRedirect]);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
     if (!isSessionReady) return;
 
-    setIsLoading(true);
+    // ── Cache check ──────────────────────────────────────────────────
+    if (!forceRefresh) {
+      const { data, isFresh, isStale } = getCachedDashboardData();
+      if (data) {
+        // Immediately populate state from cache
+        setRecords(data.records);
+        setClients(data.clients);
+        if (data.employees) setEmployees(data.employees);
+        setCacheAgeSeconds(getCacheAgeSeconds());
+
+        if (isFresh) {
+          // Data is still fresh — skip network entirely
+          return;
+        }
+
+        if (isStale) {
+          // Show stale data immediately, revalidate in the background
+          setIsBackgroundRefreshing(true);
+          // fall through to fetch below (but don't block the UI)
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+
+    if (!isBackgroundRefreshing) setIsLoading(true);
     setError('');
 
     try {
       const recordPageSize = 500;
-      const recordParams = new URLSearchParams();
-      recordParams.set('skip', '0');
-      recordParams.set('take', String(recordPageSize));
+      const fetchRecordPage = (skip) =>
+        fetch(`/api/records?skip=${skip}&take=${recordPageSize}`);
 
-      const fetchRecordPage = (skip) => {
-        const pageParams = new URLSearchParams(recordParams);
-        pageParams.set('skip', String(skip));
-        return fetch(`/api/records?${pageParams.toString()}`);
-      };
+      const requests = [fetch('/api/clients')];
 
-      const requests = [
-        fetch('/api/clients'),
-      ];
-
-      // If user is admin, fetch employees for filtering
       let fetchEmployees = false;
       if (userRole === 'admin') {
         fetchEmployees = true;
@@ -369,15 +425,12 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
       );
 
       for (const response of remainingRecordResponses) {
-        if (response.status === 401) {
-          await logoutAndRedirect();
-          return;
-        }
+        if (response.status === 401) { await logoutAndRedirect(); return; }
         if (!response.ok) throw new Error('Failed to fetch service records');
       }
 
       const remainingRecordData = await Promise.all(
-        remainingRecordResponses.map((response) => response.json())
+        remainingRecordResponses.map((r) => r.json())
       );
 
       const allRecords = [
@@ -385,25 +438,46 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         ...remainingRecordData.flatMap((page) => page.records || []),
       ];
 
-      setRecords(allRecords);
-      setClients(clientsData.clients || []);
-
-      if (fetchEmployees && responses[1] && responses[1].ok) {
+      let freshEmployees = employees;
+      if (fetchEmployees && responses[1]?.ok) {
         const employeesData = await responses[1].json();
-        setEmployees(employeesData.employees || []);
+        freshEmployees = employeesData.employees || [];
+        setEmployees(freshEmployees);
       }
+
+      const freshClients = clientsData.clients || [];
+      setRecords(allRecords);
+      setClients(freshClients);
+
+      // ── Write to cache ──────────────────────────────────────────────
+      setCachedDashboardData({ records: allRecords, clients: freshClients, employees: freshEmployees });
+      setCacheAgeSeconds(0);
+      // ───────────────────────────────────────────────────────────────
     } catch (requestError) {
       console.error(requestError);
       setError(requestError.message || 'Failed to load dashboard data');
     } finally {
       setIsLoading(false);
+      setIsBackgroundRefreshing(false);
     }
-  }, [isSessionReady, logoutAndRedirect]);
+  }, [isSessionReady, userRole, logoutAndRedirect, employees, isBackgroundRefreshing]);
 
   useEffect(() => {
     if (!isSessionReady || isBooting) return;
-    fetchDashboardData();
-  }, [isSessionReady, isBooting, fetchDashboardData]);
+    fetchDashboardData(false); // false = allow cache
+  }, [isSessionReady, isBooting]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Convenience: force-refresh + cache invalidation (used by the Refresh button and after mutations)
+  const handleRefreshRecords = useCallback(() => {
+    invalidateDashboardCache();
+    fetchDashboardData(true);
+  }, [fetchDashboardData]);
+
+  // Called after any mutation (add/edit/delete record or client) so stale data is evicted
+  const handleDataMutated = useCallback(async () => {
+    invalidateDashboardCache();
+    await fetchDashboardData(true);
+  }, [fetchDashboardData]);
 
   // All transactions (unfiltered) — used for dashboard KPIs & charts
   const allTransactions = useMemo(() => records.map(mapRecordToTransaction), [records]);
@@ -444,6 +518,23 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
           case 'pan':
             if (!txn.service.toUpperCase().includes('PAN')) return false;
             break;
+          case 'pending_payment': {
+            // Records where payment has not been fully received
+            const ps = (txn.paymentStatus || '').toLowerCase();
+            if (!ps.includes('pending') && !ps.includes('partial')) return false;
+            break;
+          }
+          case 'overdue': {
+            // Not completed/archived AND older than 5 days OR past its due date
+            if (txn.status === 'Completed' || txn.status === 'Archived') return false;
+            const dueDate = txn.record.gstFilings?.[0]?.dueDate;
+            if (dueDate) {
+              if (new Date(dueDate) >= new Date()) return false;
+            } else {
+              if (Date.now() - new Date(txn.record.createdAt).getTime() <= 5 * 24 * 60 * 60 * 1000) return false;
+            }
+            break;
+          }
         }
       }
 
@@ -591,12 +682,38 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
     setSelectedClient(null);
   };
 
-  const handleLogout = () => {
-    logoutAndRedirect();
+  /**
+   * Navigate to records tab with a pre-applied filter for the given metric.
+   * metricType: 'today_filings' | 'pending_payments' | 'completed_week' | 'overdue'
+   */
+  const handleMetricClick = (metricType) => {
+    // Clear existing filters first
+    setSearchQuery('');
+    setFilters({ serviceType: '', status: '', startDate: '', endDate: '', employeeId: '' });
+    setActiveTab('records');
+
+    switch (metricType) {
+      case 'today_filings':
+        setActiveQuickFilter('today');
+        break;
+      case 'pending_payments':
+        setActiveQuickFilter('pending_payment');
+        break;
+      case 'completed_week':
+        setActiveQuickFilter('this_week');
+        // Also restrict to completed status
+        setFilters((prev) => ({ ...prev, status: 'COMPLETED' }));
+        break;
+      case 'overdue':
+        setActiveQuickFilter('overdue');
+        break;
+      default:
+        setActiveQuickFilter(null);
+    }
   };
 
-  const handleRefreshRecords = () => {
-    fetchDashboardData();
+  const handleLogout = () => {
+    logoutAndRedirect();
   };
 
   const handleDownloadRecords = () => {
@@ -704,16 +821,35 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
               </button>
 
               {activeTab === 'records' && (
-                <button
-                  type="button"
-                  onClick={handleRefreshRecords}
-                  disabled={isLoading}
-                  className="border border-gray-200 text-gray-600 px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Refresh records"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {isBackgroundRefreshing && (
+                    <span className="text-[10px] text-blue-500 dark:text-blue-400 font-medium hidden sm:block animate-pulse">
+                      Syncing…
+                    </span>
+                  )}
+                  {!isLoading && !isBackgroundRefreshing && cacheAgeSeconds !== null && (
+                    <span
+                      className="text-[10px] text-gray-400 dark:text-gray-500 hidden sm:block"
+                      title="Age of cached data — click Refresh to force a new fetch"
+                    >
+                      {cacheAgeSeconds < 60
+                        ? 'Just updated'
+                        : cacheAgeSeconds < 3600
+                        ? `${Math.floor(cacheAgeSeconds / 60)}m ago`
+                        : `${Math.floor(cacheAgeSeconds / 3600)}h ago`}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRefreshRecords}
+                    disabled={isLoading || isBackgroundRefreshing}
+                    className="border border-gray-200 text-gray-600 px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2 text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Force a fresh fetch from the database"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${(isLoading || isBackgroundRefreshing) ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                </div>
               )}
 
               {activeTab === 'records' && (
@@ -775,8 +911,8 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
               </div>
             )}
             {isLoading && (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-blue-600 text-sm">
-                Refreshing data…
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-blue-600 text-sm dark:border-blue-900/30 dark:bg-blue-900/10 dark:text-blue-400">
+                Loading data…
               </div>
             )}
             {activeTab === 'dashboard' && (
@@ -787,7 +923,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
                     value={todayFilings}
                     subtitle="Records created today"
                     icon={ClipboardCheck}
-                    trend="Operational"
+                    onClick={() => handleMetricClick('today_filings')}
                   />
                   <MetricCard
                     title="Pending Payments"
@@ -795,6 +931,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
                     subtitle="Uncollected revenue"
                     icon={CreditCard}
                     variant="warning"
+                    onClick={() => handleMetricClick('pending_payments')}
                   />
                   <MetricCard
                     title="Completed This Week"
@@ -802,6 +939,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
                     subtitle="Last 7 days"
                     icon={CheckCircle}
                     variant="success"
+                    onClick={() => handleMetricClick('completed_week')}
                   />
                   <MetricCard
                     title="Overdue Tasks"
@@ -809,6 +947,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
                     subtitle="Needs immediate action"
                     icon={AlertTriangle}
                     variant="danger"
+                    onClick={() => handleMetricClick('overdue')}
                   />
                 </div>
 
@@ -1000,14 +1139,14 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         isOpen={isAddRecordModalOpen}
         onClose={() => setIsAddRecordModalOpen(false)}
         clients={clients}
-        onSuccess={fetchDashboardData}
+        onSuccess={handleDataMutated}
       />
       <EditRecordModal
         isOpen={isEditRecordModalOpen}
         onClose={() => setIsEditRecordModalOpen(false)}
         record={recordToEdit}
         clients={clients}
-        onSuccess={fetchDashboardData}
+        onSuccess={handleDataMutated}
       />
 
       <AddClientModal
@@ -1015,7 +1154,7 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
         onClose={() => {
           setIsAddClientModalOpen(false);
         }}
-        onSuccess={fetchDashboardData}
+        onSuccess={handleDataMutated}
       />
       <EditClientModal
         isOpen={isEditClientModalOpen}
@@ -1024,8 +1163,8 @@ export const Dashboard = ({ initialTab = 'dashboard' }) => {
           setClientToEdit(null);
         }}
         client={clientToEdit}
-        onSuccess={fetchDashboardData}
-        onDelete={fetchDashboardData}
+        onSuccess={handleDataMutated}
+        onDelete={handleDataMutated}
       />
     </div>
   );

@@ -8,6 +8,9 @@ const QUICK_FILTERS = [
   { id: 'this_week', label: 'This Week' },
   { id: 'gst', label: 'GST' },
   { id: 'pan', label: 'PAN' },
+  // Metric-triggered filters (shown only when active)
+  { id: 'pending_payment', label: 'Pending Payments', metricOnly: true },
+  { id: 'overdue', label: 'Overdue Tasks', metricOnly: true },
 ];
 
 export const FilterBar = ({ 
@@ -47,7 +50,7 @@ export const FilterBar = ({
 
         {/* Quick filter chips */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {QUICK_FILTERS.map((filter) => (
+          {QUICK_FILTERS.filter(f => !f.metricOnly || activeQuickFilter === f.id).map((filter) => (
             <button
               key={filter.id}
               onClick={() => onQuickFilter(activeQuickFilter === filter.id ? null : filter.id)}
