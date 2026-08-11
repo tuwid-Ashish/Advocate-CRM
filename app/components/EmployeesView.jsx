@@ -45,7 +45,15 @@ export const EmployeesView = ({
   });
 
   const handleCardClick = (card) => {
-    setSelectedAccount(card.fullEmp || card);
+    const mergedAccount = {
+      ...card,
+      ...(card.fullEmp || {}),
+      id: card.fullEmp?.id || card.id,
+      name: card.fullEmp?.name || card.name,
+      accountEmail: card.fullEmp?.accountEmail || card.fullEmp?.email || card.accountEmail,
+      assignments: card.fullEmp?.assignments || card.assignments,
+    };
+    setSelectedAccount(mergedAccount);
   };
 
   const handleReassignSuccess = () => {

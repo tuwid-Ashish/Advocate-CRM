@@ -47,6 +47,10 @@ export const EmployeeDetailView = ({
     if (!activeSelectedAssignment) return [];
 
     const assignmentId = activeSelectedAssignment.id;
+    const assignedNameLower = activeSelectedAssignment.assignedName?.toLowerCase();
+    const accountNameLower = employeeAccount.name?.toLowerCase();
+    const accountEmailLower = (employeeAccount.accountEmail || employeeAccount.email)?.toLowerCase();
+
     const start = new Date(activeSelectedAssignment.startDate);
     const end = activeSelectedAssignment.endDate
       ? new Date(activeSelectedAssignment.endDate)
@@ -54,21 +58,43 @@ export const EmployeeDetailView = ({
 
     return allTransactions.filter((txn) => {
       const record = txn.record;
-      if (!record) return false;
+      const txnEmpLower = txn.employee?.toLowerCase();
+      const creatorNameLower = record?.createdBy?.name?.toLowerCase();
+      const creatorEmailLower = record?.createdBy?.email?.toLowerCase();
 
-      // Must belong to this employee account
-      if (record.createdById !== employeeAccount.id) return false;
+      // 1. Account Ownership Check (must belong to this employee account)
+      const matchesAccount =
+        (record?.createdById && record.createdById === employeeAccount.id) ||
+        (creatorEmailLower && accountEmailLower && creatorEmailLower === accountEmailLower) ||
+        (creatorNameLower && accountNameLower && creatorNameLower === accountNameLower) ||
+        (txnEmpLower && accountNameLower && txnEmpLower === accountNameLower) ||
+        (txnEmpLower && assignedNameLower && txnEmpLower === assignedNameLower) ||
+        (employeeAccount.assignments &&
+          employeeAccount.assignments.some(
+            (a) => a.assignedName?.toLowerCase() === txnEmpLower
+          ));
 
-      // Match by assignmentId if attached
-      if (record.assignmentId) {
-        return record.assignmentId === assignmentId;
+      if (!matchesAccount) return false;
+
+      // 2. Assignment Specific Matching
+      // Direct assignment ID match
+      if (record?.assignmentId && assignmentId && record.assignmentId === assignmentId) {
+        return true;
       }
 
-      // Fallback matching by creation date within assignment window
+      // Direct assigned employee name match
+      if (
+        record?.assignment?.assignedName?.toLowerCase() === assignedNameLower ||
+        (txnEmpLower && assignedNameLower && txnEmpLower === assignedNameLower)
+      ) {
+        return true;
+      }
+
+      // Date window fallback for legacy records
       const recDate = new Date(txn.date);
       return recDate >= start && recDate <= end;
     });
-  }, [allTransactions, employeeAccount.id, activeSelectedAssignment]);
+  }, [allTransactions, employeeAccount, activeSelectedAssignment]);
 
   // Filtered records by search query
   const filteredRecords = useMemo(() => {
