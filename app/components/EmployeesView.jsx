@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { TrendingUp, ChevronRight, Mail, History } from 'lucide-react';
 import { EmployeeDetailView } from './EmployeeDetailView';
@@ -15,34 +15,78 @@ export const EmployeesView = ({
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [reassignAccount, setReassignAccount] = useState(null);
 
-  // Map employee stats to full employee accounts if available
-  const cardsData = employeeStats.map((stat) => {
-    // Find matching employee by name or id
-    const fullEmp = employees.find(
-      (e) =>
-        e.id === stat.id ||
-        e.name?.toLowerCase() === stat.name?.toLowerCase() ||
-        e.accountEmail?.toLowerCase() === stat.name?.toLowerCase() ||
-        e.currentAssignment?.assignedName?.toLowerCase() === stat.name?.toLowerCase()
-    );
+  // Build grid cards — EXACTLY 1 card per permanent Employee Account (showing current active employee)
+  const cardsData = useMemo(() => {
+    if (employees && employees.length > 0) {
+      return employees.map((emp) => {
+        const activeAssignment = emp.assignments?.find((a) => a.isCurrent) || emp.assignments?.[0];
+        const activeAssignedName = activeAssignment?.assignedName || emp.name;
+        const accountEmail = emp.accountEmail || emp.email;
 
-    return {
-      id: fullEmp?.id || stat.id || stat.name,
-      name: fullEmp?.name || stat.name,
-      accountEmail: fullEmp?.accountEmail || fullEmp?.email || `${stat.name.toLowerCase()}@domain.com`,
-      count: stat.count || 0,
-      revenue: stat.revenue || 0,
-      assignments: fullEmp?.assignments || [
-        {
-          id: 'default',
-          assignedName: stat.name,
-          startDate: fullEmp?.createdAt || new Date('2024-01-01'),
-          isCurrent: true,
-        },
-      ],
-      fullEmp,
-    };
-  });
+        // Calculate account-wide metrics across all transactions
+        const accountRecords = allTransactions.filter((txn) => {
+          const rec = txn.record;
+          if (!rec) return false;
+
+          return (
+            rec.createdById === emp.id ||
+            (accountEmail && rec.createdBy?.email?.toLowerCase() === accountEmail.toLowerCase()) ||
+            (emp.name && rec.createdBy?.name?.toLowerCase() === emp.name.toLowerCase()) ||
+            (emp.assignments &&
+              emp.assignments.some(
+                (a) => a.assignedName?.toLowerCase() === txn.employee?.toLowerCase()
+              ))
+          );
+        });
+
+        const totalCount = accountRecords.length;
+        const totalRevenue = accountRecords.reduce((sum, t) => sum + (t.amountReceived || 0), 0);
+
+        return {
+          id: emp.id,
+          name: activeAssignedName,
+          accountEmail: accountEmail || `${emp.name.toLowerCase()}@domain.com`,
+          count: totalCount || emp.totalAccountMetrics?.count || 0,
+          revenue: totalRevenue || emp.totalAccountMetrics?.revenue || 0,
+          assignments: emp.assignments || [
+            {
+              id: 'default',
+              assignedName: activeAssignedName,
+              startDate: emp.createdAt || new Date('2024-01-01'),
+              isCurrent: true,
+            },
+          ],
+          fullEmp: emp,
+        };
+      });
+    }
+
+    // Fallback if employees API is not loaded yet
+    const accountMap = new Map();
+    employeeStats.forEach((stat) => {
+      const key = stat.id || stat.name;
+      if (!accountMap.has(key)) {
+        accountMap.set(key, {
+          id: stat.id || stat.name,
+          name: stat.name,
+          accountEmail: `${stat.name.toLowerCase()}@domain.com`,
+          count: stat.count || 0,
+          revenue: stat.revenue || 0,
+          assignments: [
+            {
+              id: 'default',
+              assignedName: stat.name,
+              startDate: new Date('2024-01-01'),
+              isCurrent: true,
+            },
+          ],
+          fullEmp: null,
+        });
+      }
+    });
+
+    return Array.from(accountMap.values());
+  }, [employees, employeeStats, allTransactions]);
 
   const handleCardClick = (card) => {
     const mergedAccount = {
@@ -85,14 +129,14 @@ export const EmployeesView = ({
     );
   }
 
-  // Employee Performance Cards Grid View
+  // Employee Performance Cards Grid View (1 Card Per Employee Account)
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Employee Performance</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
-            Monitor revenue and transaction metrics by account. Click any card to open detailed performance view.
+            Monitor revenue and transaction metrics by employee account. Click any account to view detailed performance &amp; assignment history.
           </p>
         </div>
       </div>
