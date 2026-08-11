@@ -95,12 +95,32 @@ model Employee {
   createdRecords ServiceRecord[]
   receivedPayments Payment[]
   uploadedAttachments Attachment[] @relation("UploadedAttachments")
+  assignments EmployeeAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([email])
   @@index([role])
+}
+
+model EmployeeAssignment {
+  id           String    @id @default(cuid())
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedName String
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  isCurrent    Boolean   @default(true)
+  notes        String?
+
+  serviceRecords ServiceRecord[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([isCurrent])
 }
 
 // Unified clients table for both one-time and recurring
@@ -182,6 +202,8 @@ model ServiceRecord {
   // Created by employee
   createdById    String
   createdBy      Employee      @relation(fields: [createdById], references: [id])
+  assignmentId   String?
+  assignment     EmployeeAssignment? @relation(fields: [assignmentId], references: [id])
 
   // Attachments
   attachments    Attachment[]
@@ -204,6 +226,7 @@ model ServiceRecord {
   @@index([status])
   @@index([createdAt])
   @@index([createdById])
+  @@index([assignmentId])
 }
 
 model OneTimeServiceDetail {

@@ -14,6 +14,7 @@ export const revalidate = 0;
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest, errorResponse, errorResponseFromException, successResponse } from '@/lib/middleware';
+import { getActiveAssignmentIdForEmployee } from '@/lib/employeeAssignment';
 
 
 /**
@@ -56,6 +57,9 @@ export async function GET(request: NextRequest) {
           },
           createdBy: {
             select: { id: true, name: true, email: true },
+          },
+          assignment: {
+            select: { id: true, assignedName: true, startDate: true, endDate: true },
           },
           payment: {
             include: {
@@ -133,6 +137,8 @@ export async function POST(request: NextRequest) {
     const isGstRecord = serviceType === 'GST_3B' || serviceType === 'GST_1';
     const isExtraExpenseRecord = serviceType === 'EXTRA_EXPENSE' || details?.kind === 'EXTRA_EXPENSE';
 
+    const activeAssignmentId = await getActiveAssignmentIdForEmployee(user.id);
+
     const createdRecord = await prisma.serviceRecord.create({
       data: {
         serviceType: serviceType as any,
@@ -140,6 +146,7 @@ export async function POST(request: NextRequest) {
         details: details || null,
         notes: notes || null,
         createdById: user.id,
+        assignmentId: activeAssignmentId,
         status: recordStatus as any,
         paymentStatus: recordPaymentStatus as any,
         completedDate: recordStatus === 'COMPLETED' ? new Date() : null,

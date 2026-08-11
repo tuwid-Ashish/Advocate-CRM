@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient, ApplicationSourceType } from '@prisma/client';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { ApplicationSourceType } from '@prisma/client';
 import { startOfDay, endOfDay } from 'date-fns';
 
-const prisma = new PrismaClient();
-
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());

@@ -156,7 +156,7 @@ function mapRecordToTransaction(record) {
   const customer = record.client || {};
   const payment = record.payment || {};
   const customerName = customer.fullName || customer.businessName || customer.email || 'Unknown';
-  const employeeName = record.createdBy?.name || 'Unknown';
+  const employeeName = record.assignment?.assignedName || record.createdBy?.name || 'Unknown';
   const amountReceived = Number(payment.amount || 0);
   const rawStatus = STATUS_LABELS[record.status] || record.status || 'Pending';
   const paymentStatusRaw = record.paymentStatus || payment.status || (amountReceived > 0 ? 'PAID' : 'PENDING');
@@ -1086,12 +1086,17 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
             )}
 
 
-          {activeTab === 'employees' && userRole === 'admin' && (
-            <>
-              {/* <h1 className="text-2xl font-bold mb-6">Employees</h1> */}
-             <EmployeesView employeeStats={employeeStats} />
-            </>
-          )}
+           {activeTab === 'employees' && userRole === 'admin' && (
+             <>
+               {/* <h1 className="text-2xl font-bold mb-6">Employees</h1> */}
+              <EmployeesView
+                employeeStats={employeeStats}
+                employees={employees}
+                allTransactions={allTransactions}
+                onRefresh={handleDataMutated}
+              />
+             </>
+           )}
 
           {activeTab === 'clients' && userRole !== 'admin' && (
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 text-sm">
