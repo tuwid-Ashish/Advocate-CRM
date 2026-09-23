@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     const serviceType = searchParams.get('serviceType');
     const status = searchParams.get('status');
     const clientId = searchParams.get('clientId');
+    const search = searchParams.get('search')?.trim();
     const skip = parseInt(searchParams.get('skip') || '0');
     const take = parseInt(searchParams.get('take') || '10');
 
@@ -38,6 +39,22 @@ export async function GET(request: NextRequest) {
     if (serviceType) where.serviceType = serviceType;
     if (status) where.status = status;
     if (clientId) where.clientId = clientId;
+
+    if (search) {
+      where.OR = [
+        { client: { fullName: { contains: search, mode: 'insensitive' } } },
+        { client: { businessName: { contains: search, mode: 'insensitive' } } },
+        { client: { email: { contains: search, mode: 'insensitive' } } },
+        { client: { businessEmail: { contains: search, mode: 'insensitive' } } },
+        { client: { phone: { contains: search, mode: 'insensitive' } } },
+        { client: { businessPhone: { contains: search, mode: 'insensitive' } } },
+        { client: { panId: { contains: search, mode: 'insensitive' } } },
+        { createdBy: { name: { contains: search, mode: 'insensitive' } } },
+        { createdBy: { email: { contains: search, mode: 'insensitive' } } },
+        { assignment: { assignedName: { contains: search, mode: 'insensitive' } } },
+        { notes: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const [records, total] = await Promise.all([
       prisma.serviceRecord.findMany({

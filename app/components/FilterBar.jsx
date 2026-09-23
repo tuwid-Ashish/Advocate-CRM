@@ -33,7 +33,7 @@ export const FilterBar = ({
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search… (press / to focus)"
+            placeholder="Search name, email, phone, service... (press / to focus)"
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
             className="w-full pl-9 pr-8 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 dark:text-white"

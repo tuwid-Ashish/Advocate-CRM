@@ -163,10 +163,19 @@ function mapRecordToTransaction(record) {
   const paymentStatus = PAYMENT_STATUS_LABELS[paymentStatusRaw] || paymentStatusRaw || 'Pending';
   const paymentMode = PAYMENT_LABELS[payment.mode] || payment.mode || 'Cash';
 
+  const customerEmail = customer.email || customer.businessEmail || customer.contactPersonEmail || record.oneTimeDetail?.email || record.details?.email || '';
+  const customerPan = customer.panId || '';
+  const customerGst = customer.gstId || '';
+  const createdByEmail = record.createdBy?.email || '';
+
   return {
     id: record.id,
     date: record.createdAt,
     customerName,
+    customerEmail,
+    customerPan,
+    customerGst,
+    createdByEmail,
     phone: customer.phone || customer.businessPhone || '',
     service: SERVICE_LABELS[record.serviceType] || record.serviceType || 'Service',
     employee: employeeName,
@@ -481,12 +490,19 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
     return allTransactions.filter((txn) => {
       // 1. Global search
       if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const match =
-          txn.customerName.toLowerCase().includes(q) ||
-          txn.phone.toLowerCase().includes(q) ||
-          txn.service.toLowerCase().includes(q) ||
-          txn.notes.toLowerCase().includes(q);
+          (txn.customerName && txn.customerName.toLowerCase().includes(q)) ||
+          (txn.customerEmail && txn.customerEmail.toLowerCase().includes(q)) ||
+          (txn.phone && txn.phone.toLowerCase().includes(q)) ||
+          (txn.service && txn.service.toLowerCase().includes(q)) ||
+          (txn.employee && txn.employee.toLowerCase().includes(q)) ||
+          (txn.createdByEmail && txn.createdByEmail.toLowerCase().includes(q)) ||
+          (txn.customerPan && txn.customerPan.toLowerCase().includes(q)) ||
+          (txn.customerGst && txn.customerGst.toLowerCase().includes(q)) ||
+          (txn.serviceDetail && txn.serviceDetail.toLowerCase().includes(q)) ||
+          (txn.notes && txn.notes.toLowerCase().includes(q)) ||
+          (txn.id && txn.id.toLowerCase().includes(q));
         if (!match) return false;
       }
 
