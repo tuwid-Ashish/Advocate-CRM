@@ -41,6 +41,9 @@ import {
   Sun,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
+  ArrowLeft,
+  Info,
 } from 'lucide-react';
 // PanApplicationsView is rendered via ApplicationsView; avoid duplicate rendering
 
@@ -305,6 +308,11 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
   const [clientToEdit, setClientToEdit] = useState(null);
   const [recordsPage, setRecordsPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
+
+  // Clients tab: search box + internal per-client ledger view
+  const [clientSearch, setClientSearch] = useState('');
+  const [ledgerClient, setLedgerClient] = useState(null);
+  const [ledgerSearch, setLedgerSearch] = useState('');
 
   // Refs for hotkey targets
   const searchInputRef = useRef(null);
@@ -639,6 +647,68 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
 
   const dashboardTransactions = useMemo(() => allTransactions.slice(0, 10), [allTransactions]);
 
+  // ── Clients tab: searchable client directory ──────────────────────────
+  const filteredClients = useMemo(() => {
+    const q = clientSearch.toLowerCase().trim();
+    if (!q) return clients;
+    return clients.filter((client) => {
+      const fields = [
+        client.fullName,
+        client.businessName,
+        client.email,
+        client.businessEmail,
+        client.phone,
+        client.businessPhone,
+        client.contactPersonName,
+        client.contactPersonPhone,
+        client.contactPersonEmail,
+        client.panId,
+        client.gstId,
+      ];
+      return fields.some((value) => value && String(value).toLowerCase().includes(q));
+    });
+  }, [clients, clientSearch]);
+
+  // ── Internal per-client ledger view ───────────────────────────────────
+  // All transactions that belong to the selected client (matched by clientId).
+  const ledgerTransactions = useMemo(() => {
+    if (!ledgerClient) return [];
+    const clientId = ledgerClient.id;
+    const base = allTransactions.filter((txn) => {
+      const recordClientId = txn.record?.clientId || txn.record?.client?.id;
+      return recordClientId === clientId;
+    });
+
+    const q = ledgerSearch.toLowerCase().trim();
+    if (!q) return base;
+    return base.filter((txn) =>
+      [
+        txn.service,
+        txn.employee,
+        txn.serviceDetail,
+        txn.notes,
+        txn.status,
+        txn.paymentStatus,
+        txn.paymentMode,
+        txn.id,
+      ].some((value) => value && String(value).toLowerCase().includes(q))
+    );
+  }, [ledgerClient, allTransactions, ledgerSearch]);
+
+  // Total amount received across the selected client's ledger
+  const ledgerTotal = useMemo(
+    () => ledgerTransactions.reduce((sum, txn) => sum + txn.amountReceived, 0),
+    [ledgerTransactions]
+  );
+
+  // Leaving the Clients tab closes any open ledger view
+  useEffect(() => {
+    if (activeTab !== 'clients') {
+      setLedgerClient(null);
+      setLedgerSearch('');
+    }
+  }, [activeTab]);
+
   // Keyboard shortcuts
   useHotkeys({
     '/': () => {
@@ -726,8 +796,9 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
     logoutAndRedirect();
   };
 
-  const handleDownloadRecords = () => {
-    const rows = buildExportRows(transactions);
+  // Shared CSV export — used by the Service Records tab and the per-client ledger
+  const exportTransactionsToCsv = (txns, filename) => {
+    const rows = buildExportRows(txns);
     if (!rows.length) return;
 
     const headers = Object.keys(rows[0]);
@@ -742,11 +813,29 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `service-records-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadRecords = () => {
+    exportTransactionsToCsv(transactions, `service-records-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  // Open a client's internal ledger view (filtered records + download)
+  const handleOpenLedger = (client) => {
+    setLedgerSearch('');
+    setLedgerClient(client);
+  };
+
+  // Download only the selected client's ledger
+  const handleDownloadLedger = () => {
+    if (!ledgerClient) return;
+    const name = ledgerClient.fullName || ledgerClient.businessName || 'client';
+    const safeName = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    exportTransactionsToCsv(ledgerTransactions, `ledger-${safeName || 'client'}-${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   if (isBooting) {
@@ -814,7 +903,7 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
                   {activeTab === 'dashboard' && `Welcome back, ${userName}`}
                   {activeTab === 'records' && `${transactions.length} records shown`}
                   {activeTab === 'applications' && 'PAN, TAN, and PTDS application tracking'}
-                  {activeTab === 'clients' && `${clients.length} clients`}
+                  {activeTab === 'clients' && (ledgerClient ? `Ledger for ${ledgerClient.fullName || ledgerClient.businessName || 'client'}` : `${clients.length} clients`)}
                   {activeTab === 'employees' && 'Employee performance overview'}
                 </p>
               </div>
@@ -1054,11 +1143,84 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
             </>
           )}
 
-          {activeTab === 'clients' && userRole === 'admin' && (
+          {activeTab === 'clients' && userRole === 'admin' && ledgerClient && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setLedgerClient(null)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Clients
+              </button>
+
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                    {ledgerClient.fullName || ledgerClient.businessName || 'Unnamed'} — Ledger
+                  </h2>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {ledgerTransactions.length} records · Total received {formatCurrency(ledgerTotal)}
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={ledgerSearch}
+                      onChange={(e) => setLedgerSearch(e.target.value)}
+                      placeholder="Search this ledger…"
+                      className="pl-9 pr-3 py-2 w-full sm:w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenClient(ledgerClient)}
+                    className="border border-gray-200 text-gray-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    <Info className="w-4 h-4" />
+                    Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadLedger}
+                    disabled={ledgerTransactions.length === 0}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Ledger
+                  </button>
+                </div>
+              </div>
+
+              <TransactionTable
+                transactions={ledgerTransactions}
+                onRowClick={setSelectedRecord}
+                onEdit={handleEdit}
+              />
+            </div>
+          )}
+
+          {activeTab === 'clients' && userRole === 'admin' && !ledgerClient && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Clients</h2>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{clients.length} total</span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Clients</h2>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {clientSearch.trim() ? `${filteredClients.length} of ${clients.length}` : `${clients.length} total`}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      placeholder="Search name, email, phone, PAN, GST…"
+                      className="pl-9 pr-3 py-2 w-full sm:w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                    />
+                  </div>
                 </div>
                 <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
@@ -1072,8 +1234,15 @@ export const Dashboard = ({ initialTab = 'dashboard', onTabChange }) => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {clients.map((client) => (
-                          <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer" onClick={() => handleOpenClient(client)}>
+                        {filteredClients.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                              No clients match your search.
+                            </td>
+                          </tr>
+                        )}
+                        {filteredClients.map((client) => (
+                          <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer" onClick={() => handleOpenLedger(client)}>
                             <td className="px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white">
                               {client.fullName || client.businessName || 'Unnamed'}
                             </td>
